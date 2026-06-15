@@ -232,15 +232,15 @@ body {
     scrollbar-color: var(--border) transparent;
   }
 
-  /* ── Schema / Data Model canvas ── */
+  /* ── Schema / Data Model canvas — navy blue grid ── */
   .schema-canvas {
-    background-color: #08080c;
+    background-color: #0b1a2e;
     background-image:
-      linear-gradient(rgba(255, 192, 0, 0.06) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 192, 0, 0.06) 1px, transparent 1px),
-      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-    background-size: 32px 32px, 32px 32px, 8px 8px, 8px 8px;
+      linear-gradient(rgba(100, 149, 237, 0.14) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(100, 149, 237, 0.14) 1px, transparent 1px),
+      linear-gradient(rgba(70, 130, 180, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(70, 130, 180, 0.07) 1px, transparent 1px);
+    background-size: 40px 40px, 40px 40px, 8px 8px, 8px 8px;
     background-position: -1px -1px;
   }
 
@@ -250,11 +250,11 @@ body {
   }
 
   .schema-canvas-empty {
-    background-color: #08080c;
+    background-color: #0b1a2e;
     background-image:
-      linear-gradient(rgba(255, 192, 0, 0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 192, 0, 0.04) 1px, transparent 1px);
-    background-size: 32px 32px;
+      linear-gradient(rgba(100, 149, 237, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(100, 149, 237, 0.1) 1px, transparent 1px);
+    background-size: 40px 40px;
   }
 
   .table-card-3d {

@@ -59,12 +59,10 @@ export function TableCard({
 
   return (
     <div
-      className={`absolute table-card-3d transition-transform duration-200 ${
-        selected ? "table-card-3d--selected z-20" : "z-10"
+      className={`relative w-full table-card-3d transition-transform duration-200 ${
+        selected ? "table-card-3d--selected" : ""
       } ${connectHighlight ? "table-card-3d--connect" : ""} border ${style.border}`}
       style={{
-        left: table.position.x,
-        top: table.position.y,
         width: TABLE_CARD_WIDTH,
         minHeight: height,
         boxShadow: style.glow,

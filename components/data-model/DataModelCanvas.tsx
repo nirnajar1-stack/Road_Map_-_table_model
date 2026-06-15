@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Database,
   Link2,
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { DataModel, DbTable } from "@/lib/db-model";
 import {
+  TABLE_CARD_WIDTH,
   canvasSize,
   getFieldAnchor,
   getFieldAnchorTarget,
@@ -70,11 +71,55 @@ export function DataModelCanvas({
   onUpdateNote,
 }: DataModelCanvasProps) {
   const [dragging, setDragging] = useState<DragTarget | null>(null);
+  const [livePosition, setLivePosition] = useState<{ x: number; y: number } | null>(null);
   const [connectMode, setConnectMode] = useState(false);
   const [connectFromId, setConnectFromId] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
 
-  const tables = [...model.tables].sort((a, b) => a.order - b.order);
-  const size = canvasSize(tables, model.notes);
+  const tables = useMemo(() => {
+    return [...model.tables]
+      .sort((a, b) => a.order - b.order)
+      .map((table) => {
+        if (dragging?.kind === "table" && dragging.tableId === table.id && livePosition) {
+          return { ...table, position: livePosition };
+        }
+        return table;
+      });
+  }, [model.tables, dragging, livePosition]);
+
+  const notes = useMemo(() => {
+    return model.notes.map((note) => {
+      if (dragging?.kind === "note" && dragging.noteId === note.id && livePosition) {
+        return { ...note, position: livePosition };
+      }
+      return note;
+    });
+  }, [model.notes, dragging, livePosition]);
+  const size = canvasSize(tables, notes);
+
+  const getCanvasPoint = (clientX: number, clientY: number) => {
+    const scrollEl = scrollRef.current;
+    const innerEl = innerRef.current;
+    if (!scrollEl || !innerEl) return { x: 0, y: 0 };
+    const rect = innerEl.getBoundingClientRect();
+    return {
+      x: clientX - rect.left + scrollEl.scrollLeft,
+      y: clientY - rect.top + scrollEl.scrollTop,
+    };
+  };
+
+  const finishDrag = () => {
+    if (dragging && livePosition) {
+      if (dragging.kind === "table") {
+        onMoveTable(dragging.tableId, livePosition.x, livePosition.y);
+      } else {
+        onMoveNote(dragging.noteId, livePosition.x, livePosition.y);
+      }
+    }
+    setDragging(null);
+    setLivePosition(null);
+  };
 
   const fkFieldIds = useMemo(() => {
     const ids = new Set<string>();
@@ -132,42 +177,45 @@ export function DataModelCanvas({
       return;
     }
 
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    e.stopPropagation();
+    const pt = getCanvasPoint(e.clientX, e.clientY);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDragging({
       kind: "table",
       tableId: table.id,
-      offsetX: e.clientX - rect.left,
-      offsetY: e.clientY - rect.top,
+      offsetX: pt.x - table.position.x,
+      offsetY: pt.y - table.position.y,
     });
+    setLivePosition({ ...table.position });
     onSelectTable(table.id);
     onSelectNote(null);
   };
 
   const handleNotePointerDown = (e: React.PointerEvent, noteId: string) => {
     if ((e.target as HTMLElement).closest("button, textarea")) return;
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    e.stopPropagation();
+    const note = model.notes.find((n) => n.id === noteId);
+    if (!note) return;
+    const pt = getCanvasPoint(e.clientX, e.clientY);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDragging({
       kind: "note",
       noteId,
-      offsetX: e.clientX - rect.left,
-      offsetY: e.clientY - rect.top,
+      offsetX: pt.x - note.position.x,
+      offsetY: pt.y - note.position.y,
     });
+    setLivePosition({ ...note.position });
     onSelectNote(noteId);
     onSelectTable(null);
-    e.stopPropagation();
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!dragging) return;
-    const canvas = e.currentTarget as HTMLElement;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - dragging.offsetX + canvas.scrollLeft;
-    const y = e.clientY - rect.top - dragging.offsetY + canvas.scrollTop;
-    if (dragging.kind === "table") {
-      onMoveTable(dragging.tableId, Math.max(0, x), Math.max(0, y));
-    } else {
-      onMoveNote(dragging.noteId, Math.max(0, x), Math.max(0, y));
-    }
+    const pt = getCanvasPoint(e.clientX, e.clientY);
+    setLivePosition({
+      x: Math.max(0, pt.x - dragging.offsetX),
+      y: Math.max(0, pt.y - dragging.offsetY),
+    });
   };
 
   const exitConnectMode = () => {
@@ -192,7 +240,7 @@ export function DataModelCanvas({
   }
 
   const selectedTable = tables.find((t) => t.id === selectedTableId);
-  const selectedNote = model.notes.find((n) => n.id === selectedNoteId);
+  const selectedNote = notes.find((n) => n.id === selectedNoteId);
 
   return (
     <div className="flex flex-col lg:flex-row w-full min-h-[640px]">
@@ -246,10 +294,11 @@ export function DataModelCanvas({
         )}
 
         <div
+          ref={scrollRef}
           className="relative overflow-auto flex-1 min-h-[560px] schema-canvas"
           onPointerMove={handlePointerMove}
-          onPointerUp={() => setDragging(null)}
-          onPointerLeave={() => setDragging(null)}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
           onClick={() => {
             onSelectTable(null);
             onSelectNote(null);
@@ -257,6 +306,7 @@ export function DataModelCanvas({
           }}
         >
           <div
+            ref={innerRef}
             className="relative schema-canvas-inner"
             style={{ width: size.width, height: size.height }}
           >
@@ -323,13 +373,18 @@ export function DataModelCanvas({
             {tables.map((table) => (
               <div
                 key={table.id}
-                className={
+                className={`absolute touch-none select-none ${
                   dragging?.kind === "table" && dragging.tableId === table.id
-                    ? "cursor-grabbing"
+                    ? "cursor-grabbing z-50"
                     : connectMode
-                      ? "cursor-crosshair"
-                      : "cursor-grab"
-                }
+                      ? "cursor-crosshair z-10"
+                      : "cursor-grab z-10"
+                }`}
+                style={{
+                  left: table.position.x,
+                  top: table.position.y,
+                  width: TABLE_CARD_WIDTH,
+                }}
                 onPointerDown={(e) => handleTablePointerDown(e, table)}
               >
                 <TableCard
@@ -347,14 +402,18 @@ export function DataModelCanvas({
               </div>
             ))}
 
-            {model.notes.map((note) => (
+            {notes.map((note) => (
               <div
                 key={note.id}
-                className={
+                className={`absolute touch-none select-none ${
                   dragging?.kind === "note" && dragging.noteId === note.id
-                    ? "cursor-grabbing z-30"
+                    ? "cursor-grabbing z-50"
                     : "cursor-grab z-30"
-                }
+                }`}
+                style={{
+                  left: note.position.x,
+                  top: note.position.y,
+                }}
                 onPointerDown={(e) => handleNotePointerDown(e, note.id)}
               >
                 <NoteCard

@@ -78,7 +78,7 @@ export default function HomePage() {
                     className="absolute top-0 right-0 w-1 h-full"
                     style={{ background: project.color }}
                   />
-                  <Link href={`/project/${project.id}`} className="block p-8 pr-10">
+                  <Link href={`/project/${project.id}/timeline`} className="block p-8 pr-10">
                     <h2 className="heading-display text-xl sm:text-2xl group-hover:text-lambo-gold transition-colors">
                       {project.name}
                     </h2>
