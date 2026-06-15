@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import {
   Database,
   Link2,
@@ -43,6 +43,15 @@ interface DataModelCanvasProps {
   onAddTableLink: (fromTableId: string, toTableId: string) => void;
   onToggleTableStatus: (tableId: string) => void;
   onUpdateNote: (noteId: string, text: string) => void;
+  onUpdateTable: (
+    tableId: string,
+    updates: {
+      name?: string;
+      description?: string;
+      rlsEnabled?: boolean;
+      status?: import("@/lib/db-model").DbTableStatus;
+    }
+  ) => void;
 }
 
 type DragTarget =
@@ -69,6 +78,7 @@ export function DataModelCanvas({
   onAddTableLink,
   onToggleTableStatus,
   onUpdateNote,
+  onUpdateTable,
 }: DataModelCanvasProps) {
   const [dragging, setDragging] = useState<DragTarget | null>(null);
   const [livePosition, setLivePosition] = useState<{ x: number; y: number } | null>(null);
@@ -76,6 +86,16 @@ export function DataModelCanvas({
   const [connectFromId, setConnectFromId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
+  const pointerRef = useRef<{
+    kind: "table" | "note";
+    id: string;
+    offsetX: number;
+    offsetY: number;
+    startX: number;
+    startY: number;
+  } | null>(null);
+
+  const DRAG_THRESHOLD = 5;
 
   const tables = useMemo(() => {
     return [...model.tables]
@@ -117,8 +137,17 @@ export function DataModelCanvas({
         onMoveNote(dragging.noteId, livePosition.x, livePosition.y);
       }
     }
+    pointerRef.current = null;
     setDragging(null);
     setLivePosition(null);
+  };
+
+  const handleCanvasBackgroundClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-canvas-item]")) return;
+    onSelectTable(null);
+    onSelectNote(null);
+    if (connectMode) setConnectFromId(null);
   };
 
   const fkFieldIds = useMemo(() => {
@@ -178,17 +207,18 @@ export function DataModelCanvas({
     }
 
     e.stopPropagation();
-    const pt = getCanvasPoint(e.clientX, e.clientY);
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    setDragging({
-      kind: "table",
-      tableId: table.id,
-      offsetX: pt.x - table.position.x,
-      offsetY: pt.y - table.position.y,
-    });
-    setLivePosition({ ...table.position });
     onSelectTable(table.id);
     onSelectNote(null);
+    const pt = getCanvasPoint(e.clientX, e.clientY);
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    pointerRef.current = {
+      kind: "table",
+      id: table.id,
+      offsetX: pt.x - table.position.x,
+      offsetY: pt.y - table.position.y,
+      startX: pt.x,
+      startY: pt.y,
+    };
   };
 
   const handleNotePointerDown = (e: React.PointerEvent, noteId: string) => {
@@ -198,24 +228,50 @@ export function DataModelCanvas({
     if (!note) return;
     const pt = getCanvasPoint(e.clientX, e.clientY);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    setDragging({
-      kind: "note",
-      noteId,
-      offsetX: pt.x - note.position.x,
-      offsetY: pt.y - note.position.y,
-    });
-    setLivePosition({ ...note.position });
     onSelectNote(noteId);
     onSelectTable(null);
+    pointerRef.current = {
+      kind: "note",
+      id: noteId,
+      offsetX: pt.x - note.position.x,
+      offsetY: pt.y - note.position.y,
+      startX: pt.x,
+      startY: pt.y,
+    };
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!dragging) return;
+    const pending = pointerRef.current;
+    if (!pending) return;
     const pt = getCanvasPoint(e.clientX, e.clientY);
-    setLivePosition({
-      x: Math.max(0, pt.x - dragging.offsetX),
-      y: Math.max(0, pt.y - dragging.offsetY),
-    });
+    const dx = pt.x - pending.startX;
+    const dy = pt.y - pending.startY;
+    const isDrag = Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD;
+
+    if (!dragging && isDrag) {
+      setDragging(
+        pending.kind === "table"
+          ? {
+              kind: "table",
+              tableId: pending.id,
+              offsetX: pending.offsetX,
+              offsetY: pending.offsetY,
+            }
+          : {
+              kind: "note",
+              noteId: pending.id,
+              offsetX: pending.offsetX,
+              offsetY: pending.offsetY,
+            }
+      );
+    }
+
+    if (dragging || isDrag) {
+      setLivePosition({
+        x: Math.max(0, pt.x - pending.offsetX),
+        y: Math.max(0, pt.y - pending.offsetY),
+      });
+    }
   };
 
   const exitConnectMode = () => {
@@ -299,11 +355,7 @@ export function DataModelCanvas({
           onPointerMove={handlePointerMove}
           onPointerUp={finishDrag}
           onPointerCancel={finishDrag}
-          onClick={() => {
-            onSelectTable(null);
-            onSelectNote(null);
-            if (connectMode) setConnectFromId(null);
-          }}
+          onClick={handleCanvasBackgroundClick}
         >
           <div
             ref={innerRef}
@@ -373,6 +425,7 @@ export function DataModelCanvas({
             {tables.map((table) => (
               <div
                 key={table.id}
+                data-canvas-item
                 className={`absolute touch-none select-none ${
                   dragging?.kind === "table" && dragging.tableId === table.id
                     ? "cursor-grabbing z-50"
@@ -386,6 +439,7 @@ export function DataModelCanvas({
                   width: TABLE_CARD_WIDTH,
                 }}
                 onPointerDown={(e) => handleTablePointerDown(e, table)}
+                onClick={(e) => e.stopPropagation()}
               >
                 <TableCard
                   table={table}
@@ -393,7 +447,6 @@ export function DataModelCanvas({
                   relationshipFieldIds={fkFieldIds}
                   selected={selectedTableId === table.id}
                   connectHighlight={connectFromId === table.id}
-                  onSelect={() => onSelectTable(table.id)}
                   onAddField={() => onAddField(table.id)}
                   onAddRls={() => onAddRls(table.id)}
                   onDelete={() => onDeleteTable(table.id)}
@@ -405,6 +458,7 @@ export function DataModelCanvas({
             {notes.map((note) => (
               <div
                 key={note.id}
+                data-canvas-item
                 className={`absolute touch-none select-none ${
                   dragging?.kind === "note" && dragging.noteId === note.id
                     ? "cursor-grabbing z-50"
@@ -415,11 +469,11 @@ export function DataModelCanvas({
                   top: note.position.y,
                 }}
                 onPointerDown={(e) => handleNotePointerDown(e, note.id)}
+                onClick={(e) => e.stopPropagation()}
               >
                 <NoteCard
                   note={note}
                   selected={selectedNoteId === note.id}
-                  onSelect={() => onSelectNote(note.id)}
                   onUpdate={(text) => onUpdateNote(note.id, text)}
                   onDelete={() => onDeleteNote(note.id)}
                 />
@@ -441,7 +495,7 @@ export function DataModelCanvas({
             onAddRls={() => onAddRls(selectedTable.id)}
             onDeleteRls={onDeleteRls}
             onDeleteTableLink={onDeleteTableLink}
-            onToggleStatus={() => onToggleTableStatus(selectedTable.id)}
+            onUpdate={(updates) => onUpdateTable(selectedTable.id, updates)}
           />
         ) : selectedNote ? (
           <div className="space-y-3">
@@ -477,7 +531,7 @@ function TableDetails({
   onAddRls,
   onDeleteRls,
   onDeleteTableLink,
-  onToggleStatus,
+  onUpdate,
 }: {
   table: DbTable;
   policies: import("@/lib/db-model").RlsPolicy[];
@@ -486,23 +540,78 @@ function TableDetails({
   onAddRls: () => void;
   onDeleteRls: (id: string) => void;
   onDeleteTableLink: (id: string) => void;
-  onToggleStatus: () => void;
+  onUpdate: (updates: {
+    name?: string;
+    description?: string;
+    rlsEnabled?: boolean;
+    status?: import("@/lib/db-model").DbTableStatus;
+  }) => void;
 }) {
-  const statusLabel = table.status === "new" ? "חדשה" : "קיימת";
-  const statusColor = table.status === "new" ? "text-emerald-400" : "text-lambo-gold";
+  const [name, setName] = useState(table.name);
+  const [description, setDescription] = useState(table.description ?? "");
+
+  useEffect(() => {
+    setName(table.name);
+    setDescription(table.description ?? "");
+  }, [table.id, table.name, table.description]);
+
+  const commitText = () => {
+    onUpdate({
+      name: name.trim() || table.name,
+      description: description.trim() || undefined,
+    });
+  };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" onClick={(e) => e.stopPropagation()}>
       <div>
-        <p className="label-caption mb-1">טבלה נבחרת</p>
-        <p className="font-mono text-lg font-semibold" dir="ltr">
-          {table.name}
-        </p>
-        <p className={`text-xs mt-1 ${statusColor}`}>סטטוס: {statusLabel}</p>
-        {table.description && <p className="text-xs text-theme-muted mt-1">{table.description}</p>}
-        <button onClick={onToggleStatus} className="text-xs text-lambo-gold mt-2 hover:underline">
-          החלף ל{table.status === "new" ? "קיימת" : "חדשה"}
-        </button>
+        <p className="label-caption mb-2">עריכת טבלה</p>
+        <label className="label-caption block mb-1">שם</label>
+        <input
+          className="input-lambo font-mono text-sm mb-3"
+          dir="ltr"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={commitText}
+          onKeyDown={(e) => e.key === "Enter" && commitText()}
+        />
+        <label className="label-caption block mb-1">תיאור</label>
+        <textarea
+          className="input-lambo text-sm resize-none mb-3"
+          rows={2}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          onBlur={commitText}
+          placeholder="תיאור הטבלה..."
+        />
+        <label className="label-caption block mb-1">סטטוס</label>
+        <div className="flex gap-2 mb-3">
+          {(["new", "existing"] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => onUpdate({ status: s })}
+              className={`flex-1 py-1.5 text-xs border transition-colors ${
+                table.status === s
+                  ? s === "new"
+                    ? "border-emerald-400 bg-emerald-400/10 text-emerald-400"
+                    : "border-lambo-gold bg-lambo-gold/10 text-lambo-gold"
+                  : "border-theme-border text-theme-muted"
+              }`}
+            >
+              {s === "new" ? "חדשה" : "קיימת"}
+            </button>
+          ))}
+        </div>
+        <label className="flex items-center gap-2 text-sm text-theme-muted cursor-pointer">
+          <input
+            type="checkbox"
+            checked={table.rlsEnabled}
+            onChange={(e) => onUpdate({ rlsEnabled: e.target.checked })}
+            className="accent-lambo-gold"
+          />
+          הפעל RLS
+        </label>
       </div>
 
       <div>

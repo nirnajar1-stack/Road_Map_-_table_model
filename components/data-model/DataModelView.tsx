@@ -33,6 +33,16 @@ interface DataModelViewProps {
     tableId: string,
     status: import("@/lib/db-model").DbTableStatus
   ) => void;
+  updateDbTable: (
+    projectId: string,
+    tableId: string,
+    updates: {
+      name?: string;
+      description?: string;
+      rlsEnabled?: boolean;
+      status?: import("@/lib/db-model").DbTableStatus;
+    }
+  ) => void;
   addTableLink: (
     projectId: string,
     link: { fromTableId: string; toTableId: string; label?: string }
@@ -119,6 +129,9 @@ export function DataModelView(props: DataModelViewProps) {
         }
         onToggleTableStatus={toggleTableStatus}
         onUpdateNote={(noteId, text) => props.updateDbNote(project.id, noteId, text)}
+        onUpdateTable={(tableId, updates) =>
+          props.updateDbTable(project.id, tableId, updates)
+        }
       />
 
       {modal === "table" && (

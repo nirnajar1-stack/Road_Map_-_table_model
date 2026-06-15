@@ -17,7 +17,6 @@ interface TableCardProps {
   relationshipFieldIds: Set<string>;
   selected: boolean;
   connectHighlight?: boolean;
-  onSelect: () => void;
   onAddField: () => void;
   onAddRls: () => void;
   onDelete: () => void;
@@ -48,7 +47,6 @@ export function TableCard({
   relationshipFieldIds,
   selected,
   connectHighlight,
-  onSelect,
   onAddField,
   onAddRls,
   onDelete,
@@ -67,7 +65,6 @@ export function TableCard({
         minHeight: height,
         boxShadow: style.glow,
       }}
-      onClick={onSelect}
     >
       <div className="table-card-3d__face">
         <div

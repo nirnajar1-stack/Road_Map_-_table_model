@@ -6,7 +6,6 @@ import type { DbNote } from "@/lib/db-model";
 interface NoteCardProps {
   note: DbNote;
   selected: boolean;
-  onSelect: () => void;
   onUpdate: (text: string) => void;
   onDelete: () => void;
 }
@@ -14,7 +13,6 @@ interface NoteCardProps {
 export function NoteCard({
   note,
   selected,
-  onSelect,
   onUpdate,
   onDelete,
 }: NoteCardProps) {
@@ -26,10 +24,6 @@ export function NoteCard({
       style={{
         borderColor: accent,
         boxShadow: `0 12px 32px rgba(0,0,0,0.45), 0 0 0 1px ${accent}33, inset 0 1px 0 rgba(255,255,255,0.06)`,
-      }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
       }}
     >
       <div

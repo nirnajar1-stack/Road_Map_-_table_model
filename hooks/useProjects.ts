@@ -413,6 +413,33 @@ export function useProjects() {
     [projects, updateProject]
   );
 
+  const updateDbTable = useCallback(
+    (
+      projectId: string,
+      tableId: string,
+      updates: {
+        name?: string;
+        description?: string;
+        rlsEnabled?: boolean;
+        status?: DbTableStatus;
+      }
+    ) => {
+      const raw = projects.find((p) => p.id === projectId);
+      if (!raw) return;
+      const project = normalizeProject(raw);
+      updateProject({
+        ...project,
+        dataModel: {
+          ...project.dataModel,
+          tables: project.dataModel.tables.map((t) =>
+            t.id === tableId ? { ...t, ...updates } : t
+          ),
+        },
+      });
+    },
+    [projects, updateProject]
+  );
+
   const addTableLink = useCallback(
     (projectId: string, link: Omit<TableLink, "id">) => {
       const raw = projects.find((p) => p.id === projectId);
@@ -542,6 +569,7 @@ export function useProjects() {
     deleteRlsPolicy,
     moveDbTable,
     updateDbTableStatus,
+    updateDbTable,
     addTableLink,
     deleteTableLink,
     addDbNote,

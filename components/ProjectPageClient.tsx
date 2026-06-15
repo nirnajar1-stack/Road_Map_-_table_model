@@ -58,6 +58,7 @@ export function ProjectPageClient({ projectId, view }: ProjectPageClientProps) {
     deleteRlsPolicy,
     moveDbTable,
     updateDbTableStatus,
+    updateDbTable,
     addTableLink,
     deleteTableLink,
     addDbNote,
@@ -171,6 +172,7 @@ export function ProjectPageClient({ projectId, view }: ProjectPageClientProps) {
                 deleteRlsPolicy={deleteRlsPolicy}
                 moveDbTable={moveDbTable}
                 updateDbTableStatus={updateDbTableStatus}
+                updateDbTable={updateDbTable}
                 addTableLink={addTableLink}
                 deleteTableLink={deleteTableLink}
                 addDbNote={addDbNote}
