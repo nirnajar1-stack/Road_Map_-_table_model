@@ -1,0 +1,327 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+.light {
+  --lambo-gold: #ffc000;
+  --lambo-gold-dark: #917300;
+  --page-bg: #f8f8f8;
+  --surface: #ffffff;
+  --surface-raised: #e6e6e6;
+  --border: #dddddd;
+  --text: #202020;
+  --text-muted: #7d7d7d;
+  --text-subtle: #969696;
+  --road-asphalt: #5c5c5c;
+  --road-edge: #ffffff;
+  --road-grass: #d4e8cc;
+  --road-grass-dark: #b8d4ae;
+  --road-dash: #ffc000;
+  --overlay: rgba(0, 0, 0, 0.5);
+}
+
+.dark {
+  --page-bg: #000000;
+  --surface: #202020;
+  --surface-raised: #181818;
+  --border: #494949;
+  --text: #ffffff;
+  --text-muted: #7d7d7d;
+  --text-subtle: #969696;
+  --road-asphalt: #2a2a2a;
+  --road-edge: #969696;
+  --road-grass: #1a2418;
+  --road-grass-dark: #141c12;
+  --road-dash: #ffc000;
+  --overlay: rgba(0, 0, 0, 0.7);
+}
+
+body {
+  background: var(--page-bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+@layer components {
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 bg-lambo-gold text-black font-normal text-base px-6 py-3 transition-colors;
+    border-radius: 0;
+  }
+
+  .btn-gold:hover:not(:disabled) {
+    background: var(--lambo-gold-dark);
+  }
+
+  .btn-gold:disabled {
+    @apply opacity-40 cursor-not-allowed;
+  }
+
+  .btn-gold-sm {
+    @apply inline-flex items-center justify-center gap-2 bg-lambo-gold text-black font-normal text-sm px-4 py-2 transition-colors;
+    border-radius: 0;
+  }
+
+  .btn-gold-sm:hover:not(:disabled) {
+    background: var(--lambo-gold-dark);
+  }
+
+  .btn-gold-sm:disabled {
+    @apply opacity-40 cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 bg-transparent border px-4 py-2 text-sm font-light uppercase tracking-button transition-colors;
+    border-radius: 0;
+    border-color: color-mix(in srgb, var(--text) 50%, transparent);
+    color: var(--text);
+    opacity: 0.7;
+  }
+
+  .btn-ghost:hover {
+    @apply bg-lambo-teal border-lambo-teal text-white;
+    opacity: 1;
+  }
+
+  .btn-ghost-sm {
+    @apply inline-flex items-center justify-center gap-2 bg-transparent border text-xs px-3 py-1.5 font-light uppercase tracking-button transition-colors;
+    border-radius: 0;
+    border-color: color-mix(in srgb, var(--text) 50%, transparent);
+    color: var(--text);
+    opacity: 0.7;
+  }
+
+  .btn-ghost-sm:hover {
+    @apply bg-lambo-teal border-lambo-teal text-white;
+    opacity: 1;
+  }
+
+  .input-lambo {
+    @apply w-full px-4 py-3 focus:outline-none transition-colors;
+    background: var(--surface-raised);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 0;
+  }
+
+  .input-lambo:focus {
+    border-color: var(--lambo-gold);
+  }
+
+  .input-lambo::placeholder {
+    color: var(--text-subtle);
+  }
+
+  .heading-display {
+    @apply uppercase font-normal tracking-tight leading-none;
+    color: var(--text);
+  }
+
+  .label-micro {
+    @apply text-[10px] uppercase tracking-micro font-normal;
+    color: var(--text-muted);
+  }
+
+  .label-caption {
+    @apply text-xs uppercase tracking-label font-medium;
+    color: var(--text-muted);
+  }
+
+  .section-divider {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .badge-status {
+    @apply inline-block text-[10px] uppercase tracking-micro px-2 py-1 border;
+    border-radius: 2px;
+  }
+
+  .nav-transparent {
+    @apply sticky top-0 z-40 backdrop-blur-sm;
+    background: color-mix(in srgb, var(--page-bg) 90%, transparent);
+  }
+
+  .progress-line {
+    @apply h-px w-full;
+    background: color-mix(in srgb, var(--text) 20%, transparent);
+  }
+
+  .road-scene {
+    @apply relative overflow-x-auto scrollbar-thin;
+    background: linear-gradient(
+      180deg,
+      var(--road-grass-dark) 0%,
+      var(--road-grass) 18%,
+      var(--road-grass) 82%,
+      var(--road-grass-dark) 100%
+    );
+  }
+
+  .road-lane {
+    @apply relative flex-shrink-0;
+    height: 72px;
+    background: var(--road-asphalt);
+    border-top: 3px solid var(--road-edge);
+    border-bottom: 3px solid var(--road-edge);
+  }
+
+  .road-lane::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 2px;
+    transform: translateY(-50%);
+    background: repeating-linear-gradient(
+      90deg,
+      var(--road-dash) 0,
+      var(--road-dash) 16px,
+      transparent 16px,
+      transparent 32px
+    );
+    opacity: 0.85;
+  }
+
+  .road-segment {
+    @apply road-lane flex-shrink-0;
+    min-width: 48px;
+  }
+
+  .road-segment-done {
+    filter: brightness(1.15);
+  }
+
+  .road-segment-locked {
+    filter: brightness(0.65) saturate(0.4);
+  }
+
+  .timeline-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .timeline-node {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  }
+
+  .timeline-node-open {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--node-color, var(--lambo-gold)) 18%, transparent);
+  }
+
+  .timeline-node-active {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--node-color, var(--lambo-gold)) 28%, transparent);
+  }
+
+  .timeline-node-done {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--node-color, var(--lambo-gold)) 22%, transparent);
+  }
+
+  .roadmap-grid-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  /* ── Schema / Data Model canvas ── */
+  .schema-canvas {
+    background-color: #08080c;
+    background-image:
+      linear-gradient(rgba(255, 192, 0, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 192, 0, 0.06) 1px, transparent 1px),
+      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 32px 32px, 32px 32px, 8px 8px, 8px 8px;
+    background-position: -1px -1px;
+  }
+
+  .schema-canvas-inner {
+    perspective: 1200px;
+    transform-style: preserve-3d;
+  }
+
+  .schema-canvas-empty {
+    background-color: #08080c;
+    background-image:
+      linear-gradient(rgba(255, 192, 0, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 192, 0, 0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .table-card-3d {
+    transform: perspective(900px) rotateX(4deg);
+    transform-origin: center bottom;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background: linear-gradient(160deg, #2a2a32 0%, #1a1a22 40%, #121218 100%);
+    border-radius: 2px;
+  }
+
+  .table-card-3d:hover {
+    transform: perspective(900px) rotateX(2deg) translateY(-2px);
+  }
+
+  .table-card-3d--selected {
+    transform: perspective(900px) rotateX(0deg) translateY(-4px) scale(1.01);
+  }
+
+  .table-card-3d--connect {
+    animation: connect-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes connect-pulse {
+    0%, 100% { outline: 2px solid rgba(255, 192, 0, 0.4); }
+    50% { outline: 2px solid rgba(255, 192, 0, 0.9); }
+  }
+
+  .table-card-3d__face {
+    position: relative;
+  }
+
+  .table-card-3d__face::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.04) 0%,
+      transparent 40%,
+      transparent 60%,
+      rgba(0, 0, 0, 0.15) 100%
+    );
+  }
+
+  .schema-note-card {
+    width: 200px;
+    background: linear-gradient(145deg, #2a2418 0%, #1a1610 100%);
+    border: 1px solid rgba(255, 192, 0, 0.35);
+    border-radius: 2px;
+    transform: perspective(600px) rotateX(2deg) rotateZ(-1deg);
+    transition: transform 0.15s ease;
+  }
+
+  .schema-note-card:hover {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) translateY(-2px);
+  }
+
+  .schema-note-card--selected {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) translateY(-3px) scale(1.02);
+    z-index: 40;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+}
