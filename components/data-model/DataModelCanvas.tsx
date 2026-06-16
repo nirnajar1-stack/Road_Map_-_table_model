@@ -6,6 +6,8 @@ import {
   Link2,
   MessageSquarePlus,
   MousePointer2,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   Share2,
   Shield,
@@ -91,6 +93,7 @@ export function DataModelCanvas({
   const [livePosition, setLivePosition] = useState<{ x: number; y: number } | null>(null);
   const [connectMode, setConnectMode] = useState(false);
   const [connectFromId, setConnectFromId] = useState<string | null>(null);
+  const [detailsPanelOpen, setDetailsPanelOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
   const pointerRef = useRef<{
@@ -506,42 +509,71 @@ export function DataModelCanvas({
         </div>
       </div>
 
-      <aside className="w-full lg:w-80 flex-shrink-0 bg-theme-surface p-4 overflow-y-auto max-h-[70vh]">
-        {selectedTable ? (
-          <TableDetails
-            table={selectedTable}
-            policies={model.rlsPolicies.filter((p) => p.tableId === selectedTable.id)}
-            tableLinks={model.tableLinks.filter(
-              (l) => l.fromTableId === selectedTable.id || l.toTableId === selectedTable.id
-            )}
-            allTables={tables}
-            onAddRls={() => onAddRls(selectedTable.id)}
-            onDeleteRls={onDeleteRls}
-            onDeleteTableLink={onDeleteTableLink}
-            onUpdate={(updates) => onUpdateTable(selectedTable.id, updates)}
-          />
-        ) : selectedNote ? (
-          <div className="space-y-3">
-            <p className="label-caption">הודעה נבחרת</p>
-            <p className="text-sm text-theme-muted whitespace-pre-wrap">{selectedNote.text}</p>
+      {detailsPanelOpen ? (
+        <aside className="schema-details-panel w-full lg:w-80 flex-shrink-0 bg-theme-surface border-t lg:border-t-0 lg:border-r border-theme-border flex flex-col max-h-[70vh] lg:max-h-none lg:min-h-[560px]">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-theme-border flex-shrink-0">
+            <p className="label-caption">פרטים</p>
             <button
-              onClick={() => onDeleteNote(selectedNote.id)}
-              className="text-xs text-red-400 hover:underline"
+              type="button"
+              onClick={() => setDetailsPanelOpen(false)}
+              className="p-1.5 text-theme-muted hover:text-theme-text hover:bg-theme-raised transition-colors"
+              title="מזער פאנל"
             >
-              מחק הודעה
+              <PanelLeftClose size={16} />
             </button>
           </div>
-        ) : (
-          <div className="text-sm text-theme-muted space-y-3">
-            <p className="label-caption mb-2">פאנל פרטים</p>
-            <p>לחץ על טבלה או הודעה לפרטים</p>
-            <p className="text-xs">
-              השתמש ב<strong className="text-lambo-gold font-normal">חבר קו</strong> כדי לקשר
-              טבלאות ויזואלית
-            </p>
+          <div className="p-4 overflow-y-auto flex-1">
+            {selectedTable ? (
+              <TableDetails
+                table={selectedTable}
+                policies={model.rlsPolicies.filter((p) => p.tableId === selectedTable.id)}
+                tableLinks={model.tableLinks.filter(
+                  (l) => l.fromTableId === selectedTable.id || l.toTableId === selectedTable.id
+                )}
+                allTables={tables}
+                onAddRls={() => onAddRls(selectedTable.id)}
+                onDeleteRls={onDeleteRls}
+                onDeleteTableLink={onDeleteTableLink}
+                onUpdate={(updates) => onUpdateTable(selectedTable.id, updates)}
+              />
+            ) : selectedNote ? (
+              <div className="space-y-3">
+                <p className="label-caption">הודעה נבחרת</p>
+                <p className="text-sm text-theme-muted whitespace-pre-wrap">{selectedNote.text}</p>
+                <button
+                  onClick={() => onDeleteNote(selectedNote.id)}
+                  className="text-xs text-red-400 hover:underline"
+                >
+                  מחק הודעה
+                </button>
+              </div>
+            ) : (
+              <div className="text-sm text-theme-muted space-y-3">
+                <p className="label-caption mb-2">פאנל פרטים</p>
+                <p>לחץ על טבלה או הודעה לפרטים</p>
+                <p className="text-xs">
+                  השתמש ב<strong className="text-lambo-gold font-normal">חבר קו</strong> כדי לקשר
+                  טבלאות ויזואלית
+                </p>
+              </div>
+            )}
           </div>
-        )}
-      </aside>
+        </aside>
+      ) : (
+        <div className="schema-details-panel flex flex-shrink-0 bg-theme-surface border-t lg:border-t-0 lg:border-r border-theme-border w-full lg:w-11">
+          <button
+            type="button"
+            onClick={() => setDetailsPanelOpen(true)}
+            className="flex lg:flex-col items-center justify-center gap-2 py-3 lg:py-4 px-4 lg:px-2 text-theme-muted hover:text-lambo-gold hover:bg-theme-raised transition-colors w-full lg:min-h-[120px]"
+            title="הצג פאנל פרטים"
+          >
+            <PanelLeftOpen size={18} />
+            <span className="lg:schema-details-rail text-xs lg:text-[10px] uppercase tracking-wider">
+              הצג פרטים
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

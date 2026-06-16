@@ -232,14 +232,14 @@ body {
     scrollbar-color: var(--border) transparent;
   }
 
-  /* ── Schema / Data Model canvas — navy blue grid ── */
+  /* ── Schema / Data Model canvas — lighter navy grid ── */
   .schema-canvas {
-    background-color: #0b1a2e;
+    background-color: #2d5a8a;
     background-image:
-      linear-gradient(rgba(100, 149, 237, 0.14) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(100, 149, 237, 0.14) 1px, transparent 1px),
-      linear-gradient(rgba(70, 130, 180, 0.07) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(70, 130, 180, 0.07) 1px, transparent 1px);
+      linear-gradient(rgba(200, 220, 255, 0.28) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(200, 220, 255, 0.28) 1px, transparent 1px),
+      linear-gradient(rgba(180, 210, 245, 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(180, 210, 245, 0.12) 1px, transparent 1px);
     background-size: 40px 40px, 40px 40px, 8px 8px, 8px 8px;
     background-position: -1px -1px;
   }
@@ -250,11 +250,20 @@ body {
   }
 
   .schema-canvas-empty {
-    background-color: #0b1a2e;
+    background-color: #2d5a8a;
     background-image:
-      linear-gradient(rgba(100, 149, 237, 0.1) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(100, 149, 237, 0.1) 1px, transparent 1px);
+      linear-gradient(rgba(200, 220, 255, 0.22) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(200, 220, 255, 0.22) 1px, transparent 1px);
     background-size: 40px 40px;
+  }
+
+  .schema-details-panel {
+    transition: width 0.2s ease, min-width 0.2s ease;
+  }
+
+  .schema-details-rail {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
   }
 
   .table-card-3d {
