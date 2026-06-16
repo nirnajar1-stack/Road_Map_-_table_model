@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, Database, LayoutList, Map, Plus } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
+import { readModelFromSearchParams } from "@/lib/model-snapshot";
 import { StageCard } from "@/components/StageCard";
 import { RoadmapTimeline } from "@/components/RoadmapTimeline";
 import { VerticalRoadmap } from "@/components/RoadmapTimelineVertical";
@@ -59,6 +61,7 @@ export function ProjectPageClient({ projectId, view }: ProjectPageClientProps) {
     moveDbTable,
     updateDbTableStatus,
     updateDbTable,
+    importModelSnapshot,
     addTableLink,
     deleteTableLink,
     addDbNote,
@@ -71,9 +74,20 @@ export function ProjectPageClient({ projectId, view }: ProjectPageClientProps) {
   const [showFactorForm, setShowFactorForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskFactorId, setTaskFactorId] = useState<string | undefined>();
+  const searchParams = useSearchParams();
+  const importedFromUrl = useRef(false);
 
   const project = projects.find((p) => p.id === projectId);
   const now = new Date();
+
+  // אם הפרויקט לא קיים אבל יש מודל ב-URL — ייבוא אוטומטי (להטמעה/שיתוף)
+  useEffect(() => {
+    if (!loaded || importedFromUrl.current || view !== "schema") return;
+    const model = readModelFromSearchParams(searchParams);
+    if (!model || project) return;
+    importedFromUrl.current = true;
+    importModelSnapshot(projectId, model);
+  }, [loaded, project, projectId, view, searchParams, importModelSnapshot]);
 
   if (!loaded) {
     return (
@@ -84,6 +98,14 @@ export function ProjectPageClient({ projectId, view }: ProjectPageClientProps) {
   }
 
   if (!project) {
+    const modelInUrl = readModelFromSearchParams(searchParams);
+    if (view === "schema" && modelInUrl) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-theme-page">
+          <div className="w-8 h-8 border-2 border-lambo-gold border-t-transparent animate-spin" />
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-theme-page">
         <p className="text-theme-muted">הפרויקט לא נמצא</p>
@@ -173,6 +195,7 @@ export function ProjectPageClient({ projectId, view }: ProjectPageClientProps) {
                 moveDbTable={moveDbTable}
                 updateDbTableStatus={updateDbTableStatus}
                 updateDbTable={updateDbTable}
+                importModelSnapshot={importModelSnapshot}
                 addTableLink={addTableLink}
                 deleteTableLink={deleteTableLink}
                 addDbNote={addDbNote}

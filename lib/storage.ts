@@ -3,6 +3,8 @@ import { normalizeProject } from "./types";
 
 const STORAGE_KEY = "roadmap-projects";
 
+export { STORAGE_KEY };
+
 export function loadProjects(): Project[] {
   if (typeof window === "undefined") return [];
   try {

@@ -6,12 +6,14 @@ import {
   deleteProject as removeProject,
   loadProjects,
   saveProjects,
-  upsertProject,
+  STORAGE_KEY,
 } from "@/lib/storage";
 import {
   createDefaultFields,
   defaultTablePosition,
   emptyDataModel,
+  normalizeDataModel,
+  type DataModel,
   type DbField,
   type DbNote,
   type DbRelationship,
@@ -35,6 +37,14 @@ export function useProjects() {
   useEffect(() => {
     setProjects(loadProjects());
     setLoaded(true);
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) {
+        setProjects(loadProjects());
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   const persist = useCallback((next: Project[]) => {
@@ -46,36 +56,104 @@ export function useProjects() {
     return { ...normalizeProject(project), updatedAt: new Date().toISOString() };
   }, []);
 
-  const createProject = useCallback(
-    (name: string, description?: string) => {
-      const now = new Date().toISOString();
-      const project: Project = {
-        id: uuidv4(),
-        name,
-        description,
-        color: PROJECT_COLORS[projects.length % PROJECT_COLORS.length],
-        createdAt: now,
-        updatedAt: now,
-        stages: [],
-        factors: [],
-        tasks: [],
-        dataModel: emptyDataModel(),
-      };
-      const next = [...projects, project];
-      persist(next);
-      return project;
+  /** עדכון אמין לפי state עדכני — מונע דריסת נתונים */
+  const mutateProject = useCallback(
+    (projectId: string, mutator: (project: Project) => Project | null) => {
+      setProjects((prev) => {
+        const raw = prev.find((p) => p.id === projectId);
+        if (!raw) return prev;
+        const result = mutator(normalizeProject(raw));
+        if (!result) return prev;
+        const normalized = touch(result);
+        const next = prev.map((p) => (p.id === projectId ? normalized : p));
+        saveProjects(next);
+        return next;
+      });
     },
-    [projects, persist]
+    [touch]
   );
 
   const updateProject = useCallback(
     (project: Project) => {
-      const next = projects.map((p) =>
-        p.id === project.id ? touch(project) : p
-      );
-      persist(next);
+      const normalized = touch(project);
+      setProjects((prev) => {
+        const next = prev.map((p) => (p.id === normalized.id ? normalized : p));
+        saveProjects(next);
+        return next;
+      });
     },
-    [projects, persist, touch]
+    [touch]
+  );
+
+  const createProject = useCallback(
+    (name: string, description?: string) => {
+      const now = new Date().toISOString();
+      let created!: Project;
+      setProjects((prev) => {
+        const project: Project = {
+          id: uuidv4(),
+          name,
+          description,
+          color: PROJECT_COLORS[prev.length % PROJECT_COLORS.length],
+          createdAt: now,
+          updatedAt: now,
+          stages: [],
+          factors: [],
+          tasks: [],
+          dataModel: emptyDataModel(),
+        };
+        created = project;
+        const next = [...prev, project];
+        saveProjects(next);
+        return next;
+      });
+      return created;
+    },
+    []
+  );
+
+  const importModelSnapshot = useCallback(
+    (projectId: string, model: DataModel, name = "מודל מיובא") => {
+      setProjects((prev) => {
+        const idx = prev.findIndex((p) => p.id === projectId);
+        const now = new Date().toISOString();
+        const base =
+          idx >= 0
+            ? normalizeProject(prev[idx])
+            : ({
+                id: projectId,
+                name,
+                color: PROJECT_COLORS[prev.length % PROJECT_COLORS.length],
+                createdAt: now,
+                updatedAt: now,
+                stages: [],
+                factors: [],
+                tasks: [],
+                dataModel: emptyDataModel(),
+              } satisfies Project);
+        const updated = touch({
+          ...base,
+          dataModel: normalizeDataModel(model),
+        });
+        const next =
+          idx >= 0
+            ? prev.map((p) => (p.id === projectId ? updated : p))
+            : [...prev, updated];
+        saveProjects(next);
+        return next;
+      });
+    },
+    [touch]
+  );
+
+  const replaceDataModel = useCallback(
+    (projectId: string, model: DataModel) => {
+      mutateProject(projectId, (project) => ({
+        ...project,
+        dataModel: normalizeDataModel(model),
+      }));
+    },
+    [mutateProject]
   );
 
   const deleteProject = useCallback(
@@ -246,66 +324,61 @@ export function useProjects() {
       rlsEnabled: boolean,
       status: DbTableStatus = "new"
     ) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      const fields = createDefaultFields().map((f, i) => ({
-        ...f,
-        id: uuidv4(),
-        order: i,
-      }));
-      const table = {
-        id: uuidv4(),
-        name,
-        description: description || undefined,
-        fields,
-        position: defaultTablePosition(project.dataModel.tables.length),
-        order: project.dataModel.tables.length,
-        rlsEnabled,
-        status,
-      };
-      updateProject({
-        ...project,
-        dataModel: {
-          ...project.dataModel,
-          tables: [...project.dataModel.tables, table],
-        },
+      mutateProject(projectId, (project) => {
+        const fields = createDefaultFields().map((f, i) => ({
+          ...f,
+          id: uuidv4(),
+          order: i,
+        }));
+        const table = {
+          id: uuidv4(),
+          name,
+          description: description || undefined,
+          fields,
+          position: defaultTablePosition(project.dataModel.tables.length),
+          order: project.dataModel.tables.length,
+          rlsEnabled,
+          status,
+        };
+        return {
+          ...project,
+          dataModel: {
+            ...project.dataModel,
+            tables: [...project.dataModel.tables, table],
+          },
+        };
       });
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const addDbField = useCallback(
     (projectId: string, tableId: string, field: Omit<DbField, "id" | "order">) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      const table = project.dataModel.tables.find((t) => t.id === tableId);
-      if (!table) return;
-      const newField: DbField = {
-        ...field,
-        id: uuidv4(),
-        order: table.fields.length,
-      };
-      updateProject({
-        ...project,
-        dataModel: {
-          ...project.dataModel,
-          tables: project.dataModel.tables.map((t) =>
-            t.id === tableId ? { ...t, fields: [...t.fields, newField] } : t
-          ),
-        },
+      mutateProject(projectId, (project) => {
+        const table = project.dataModel.tables.find((t) => t.id === tableId);
+        if (!table) return null;
+        const newField: DbField = {
+          ...field,
+          id: uuidv4(),
+          order: table.fields.length,
+        };
+        return {
+          ...project,
+          dataModel: {
+            ...project.dataModel,
+            tables: project.dataModel.tables.map((t) =>
+              t.id === tableId ? { ...t, fields: [...t.fields, newField] } : t
+            ),
+          },
+        };
       });
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const addDbRelationship = useCallback(
     (projectId: string, rel: Omit<DbRelationship, "id">) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
           ...project.dataModel,
@@ -314,17 +387,14 @@ export function useProjects() {
             { ...rel, id: uuidv4() },
           ],
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const addRlsPolicy = useCallback(
     (projectId: string, policy: Omit<RlsPolicy, "id">) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
           ...project.dataModel,
@@ -333,19 +403,17 @@ export function useProjects() {
             { ...policy, id: uuidv4() },
           ],
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const deleteDbTable = useCallback(
     (projectId: string, tableId: string) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
+          ...project.dataModel,
           tables: project.dataModel.tables.filter((t) => t.id !== tableId),
           relationships: project.dataModel.relationships.filter(
             (r) => r.fromTableId !== tableId && r.toTableId !== tableId
@@ -356,33 +424,27 @@ export function useProjects() {
           ),
           notes: project.dataModel.notes.filter((n) => n.tableId !== tableId),
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const deleteRlsPolicy = useCallback(
     (projectId: string, policyId: string) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
           ...project.dataModel,
           rlsPolicies: project.dataModel.rlsPolicies.filter((p) => p.id !== policyId),
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const moveDbTable = useCallback(
     (projectId: string, tableId: string, x: number, y: number) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
           ...project.dataModel,
@@ -390,17 +452,14 @@ export function useProjects() {
             t.id === tableId ? { ...t, position: { x, y } } : t
           ),
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const updateDbTableStatus = useCallback(
     (projectId: string, tableId: string, status: DbTableStatus) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
           ...project.dataModel,
@@ -408,9 +467,9 @@ export function useProjects() {
             t.id === tableId ? { ...t, status } : t
           ),
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const updateDbTable = useCallback(
@@ -422,12 +481,13 @@ export function useProjects() {
         description?: string;
         rlsEnabled?: boolean;
         status?: DbTableStatus;
+        cardWidth?: number;
+        bodyMaxHeight?: number;
+        fieldsCollapsed?: boolean;
+        pinned?: boolean;
       }
     ) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
           ...project.dataModel,
@@ -435,71 +495,61 @@ export function useProjects() {
             t.id === tableId ? { ...t, ...updates } : t
           ),
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const addTableLink = useCallback(
     (projectId: string, link: Omit<TableLink, "id">) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      const exists = project.dataModel.tableLinks.some(
-        (l) =>
-          (l.fromTableId === link.fromTableId && l.toTableId === link.toTableId) ||
-          (l.fromTableId === link.toTableId && l.toTableId === link.fromTableId)
-      );
-      if (exists) return;
-      updateProject({
-        ...project,
-        dataModel: {
-          ...project.dataModel,
-          tableLinks: [...project.dataModel.tableLinks, { ...link, id: uuidv4() }],
-        },
+      mutateProject(projectId, (project) => {
+        const exists = project.dataModel.tableLinks.some(
+          (l) =>
+            (l.fromTableId === link.fromTableId && l.toTableId === link.toTableId) ||
+            (l.fromTableId === link.toTableId && l.toTableId === link.fromTableId)
+        );
+        if (exists) return null;
+        return {
+          ...project,
+          dataModel: {
+            ...project.dataModel,
+            tableLinks: [...project.dataModel.tableLinks, { ...link, id: uuidv4() }],
+          },
+        };
       });
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const deleteTableLink = useCallback(
     (projectId: string, linkId: string) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
           ...project.dataModel,
           tableLinks: project.dataModel.tableLinks.filter((l) => l.id !== linkId),
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const addDbNote = useCallback(
     (projectId: string, note: Omit<DbNote, "id">) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
           ...project.dataModel,
           notes: [...project.dataModel.notes, { ...note, id: uuidv4() }],
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const updateDbNote = useCallback(
     (projectId: string, noteId: string, text: string) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
           ...project.dataModel,
@@ -507,33 +557,27 @@ export function useProjects() {
             n.id === noteId ? { ...n, text } : n
           ),
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const deleteDbNote = useCallback(
     (projectId: string, noteId: string) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
           ...project.dataModel,
           notes: project.dataModel.notes.filter((n) => n.id !== noteId),
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   const moveDbNote = useCallback(
     (projectId: string, noteId: string, x: number, y: number) => {
-      const raw = projects.find((p) => p.id === projectId);
-      if (!raw) return;
-      const project = normalizeProject(raw);
-      updateProject({
+      mutateProject(projectId, (project) => ({
         ...project,
         dataModel: {
           ...project.dataModel,
@@ -541,9 +585,9 @@ export function useProjects() {
             n.id === noteId ? { ...n, position: { x, y } } : n
           ),
         },
-      });
+      }));
     },
-    [projects, updateProject]
+    [mutateProject]
   );
 
   return {
@@ -570,6 +614,8 @@ export function useProjects() {
     moveDbTable,
     updateDbTableStatus,
     updateDbTable,
+    replaceDataModel,
+    importModelSnapshot,
     addTableLink,
     deleteTableLink,
     addDbNote,

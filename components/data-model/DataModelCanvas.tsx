@@ -7,13 +7,14 @@ import {
   MessageSquarePlus,
   MousePointer2,
   Plus,
+  Share2,
   Shield,
   Table2,
   Unlink,
 } from "lucide-react";
 import type { DataModel, DbTable } from "@/lib/db-model";
 import {
-  TABLE_CARD_WIDTH,
+  getTableWidth,
   canvasSize,
   getFieldAnchor,
   getFieldAnchorTarget,
@@ -34,6 +35,7 @@ interface DataModelCanvasProps {
   onAddRelationship: () => void;
   onAddRls: (tableId?: string) => void;
   onAddNote: () => void;
+  onCopyShareLink: () => void;
   onDeleteTable: (tableId: string) => void;
   onDeleteRls: (policyId: string) => void;
   onDeleteTableLink: (linkId: string) => void;
@@ -50,6 +52,10 @@ interface DataModelCanvasProps {
       description?: string;
       rlsEnabled?: boolean;
       status?: import("@/lib/db-model").DbTableStatus;
+      cardWidth?: number;
+      bodyMaxHeight?: number;
+      fieldsCollapsed?: boolean;
+      pinned?: boolean;
     }
   ) => void;
 }
@@ -69,6 +75,7 @@ export function DataModelCanvas({
   onAddRelationship,
   onAddRls,
   onAddNote,
+  onCopyShareLink,
   onDeleteTable,
   onDeleteRls,
   onDeleteTableLink,
@@ -99,7 +106,11 @@ export function DataModelCanvas({
 
   const tables = useMemo(() => {
     return [...model.tables]
-      .sort((a, b) => a.order - b.order)
+      .sort((a, b) => {
+        if (a.pinned && !b.pinned) return 1;
+        if (!a.pinned && b.pinned) return -1;
+        return a.order - b.order;
+      })
       .map((table) => {
         if (dragging?.kind === "table" && dragging.tableId === table.id && livePosition) {
           return { ...table, position: livePosition };
@@ -107,6 +118,13 @@ export function DataModelCanvas({
         return table;
       });
   }, [model.tables, dragging, livePosition]);
+
+  const getTableZIndex = (table: DbTable) => {
+    if (dragging?.kind === "table" && dragging.tableId === table.id) return 50;
+    if (table.pinned) return 60;
+    if (selectedTableId === table.id) return 40;
+    return 10;
+  };
 
   const notes = useMemo(() => {
     return model.notes.map((note) => {
@@ -317,6 +335,9 @@ export function DataModelCanvas({
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <button onClick={onCopyShareLink} className="btn-ghost-sm !opacity-100" title="העתק קישור עם כל הנתונים">
+              <Share2 size={14} /> שתף קישור
+            </button>
             <button
               onClick={() => (connectMode ? exitConnectMode() : setConnectMode(true))}
               className={`btn-ghost-sm !opacity-100 ${connectMode ? "!bg-lambo-gold/20 !text-lambo-gold" : ""}`}
@@ -428,15 +449,16 @@ export function DataModelCanvas({
                 data-canvas-item
                 className={`absolute touch-none select-none ${
                   dragging?.kind === "table" && dragging.tableId === table.id
-                    ? "cursor-grabbing z-50"
+                    ? "cursor-grabbing"
                     : connectMode
-                      ? "cursor-crosshair z-10"
-                      : "cursor-grab z-10"
+                      ? "cursor-crosshair"
+                      : "cursor-grab"
                 }`}
                 style={{
                   left: table.position.x,
                   top: table.position.y,
-                  width: TABLE_CARD_WIDTH,
+                  width: getTableWidth(table),
+                  zIndex: getTableZIndex(table),
                 }}
                 onPointerDown={(e) => handleTablePointerDown(e, table)}
                 onClick={(e) => e.stopPropagation()}
@@ -451,6 +473,7 @@ export function DataModelCanvas({
                   onAddRls={() => onAddRls(table.id)}
                   onDelete={() => onDeleteTable(table.id)}
                   onToggleStatus={() => onToggleTableStatus(table.id)}
+                  onUpdateLayout={(updates) => onUpdateTable(table.id, updates)}
                 />
               </div>
             ))}
@@ -545,6 +568,10 @@ function TableDetails({
     description?: string;
     rlsEnabled?: boolean;
     status?: import("@/lib/db-model").DbTableStatus;
+    cardWidth?: number;
+    bodyMaxHeight?: number;
+    fieldsCollapsed?: boolean;
+    pinned?: boolean;
   }) => void;
 }) {
   const [name, setName] = useState(table.name);
@@ -603,7 +630,7 @@ function TableDetails({
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-2 text-sm text-theme-muted cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-theme-muted cursor-pointer mb-2">
           <input
             type="checkbox"
             checked={table.rlsEnabled}
@@ -612,6 +639,50 @@ function TableDetails({
           />
           הפעל RLS
         </label>
+        <label className="flex items-center gap-2 text-sm text-theme-muted cursor-pointer">
+          <input
+            type="checkbox"
+            checked={table.pinned ?? false}
+            onChange={(e) => onUpdate({ pinned: e.target.checked })}
+            className="accent-lambo-gold"
+          />
+          נעץ טבלה (תמיד מעל)
+        </label>
+        <label className="flex items-center gap-2 text-sm text-theme-muted cursor-pointer mt-2">
+          <input
+            type="checkbox"
+            checked={table.fieldsCollapsed ?? false}
+            onChange={(e) => onUpdate({ fieldsCollapsed: e.target.checked })}
+            className="accent-lambo-gold"
+          />
+          כווץ שדות
+        </label>
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <div>
+            <label className="label-caption block mb-1">רוחב ({table.cardWidth ?? 300}px)</label>
+            <input
+              type="range"
+              min={200}
+              max={560}
+              value={table.cardWidth ?? 300}
+              onChange={(e) => onUpdate({ cardWidth: Number(e.target.value) })}
+              className="w-full accent-lambo-gold"
+            />
+          </div>
+          <div>
+            <label className="label-caption block mb-1">גובה שדות</label>
+            <input
+              type="range"
+              min={60}
+              max={480}
+              value={table.bodyMaxHeight ?? Math.max(60, table.fields.length * 30)}
+              onChange={(e) =>
+                onUpdate({ bodyMaxHeight: Number(e.target.value), fieldsCollapsed: false })
+              }
+              className="w-full accent-lambo-gold"
+            />
+          </div>
+        </div>
       </div>
 
       <div>

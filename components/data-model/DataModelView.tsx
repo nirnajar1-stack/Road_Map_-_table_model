@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { DbField, DbRelationship, RlsPolicy } from "@/lib/db-model";
 import type { Project } from "@/lib/types";
 import { normalizeProject } from "@/lib/types";
+import {
+  buildModelShareUrl,
+  canEmbedModelInUrl,
+  readModelFromSearchParams,
+} from "@/lib/model-snapshot";
 import { DataModelCanvas } from "./DataModelCanvas";
 import { Modal } from "@/components/ProjectForm";
 import {
@@ -15,6 +21,11 @@ import {
 
 interface DataModelViewProps {
   project: Project;
+  importModelSnapshot: (
+    projectId: string,
+    model: import("@/lib/db-model").DataModel,
+    name?: string
+  ) => void;
   addDbTable: (
     projectId: string,
     name: string,
@@ -41,6 +52,10 @@ interface DataModelViewProps {
       description?: string;
       rlsEnabled?: boolean;
       status?: import("@/lib/db-model").DbTableStatus;
+      cardWidth?: number;
+      bodyMaxHeight?: number;
+      fieldsCollapsed?: boolean;
+      pinned?: boolean;
     }
   ) => void;
   addTableLink: (
@@ -60,14 +75,41 @@ interface DataModelViewProps {
 type ModalType = "table" | "field" | "relationship" | "rls" | null;
 
 export function DataModelView(props: DataModelViewProps) {
-  const { project } = props;
+  const { project, importModelSnapshot } = props;
   const model = normalizeProject(project).dataModel;
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const initialModelEncoded = useRef(searchParams.get("model"));
+  const snapshotLoaded = useRef(false);
 
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalType>(null);
   const [fieldTableId, setFieldTableId] = useState<string | null>(null);
   const [rlsTableId, setRlsTableId] = useState<string | undefined>();
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
+
+  // טעינת מודל מקישור (?model=...) בכניסה ראשונה בלבד
+  useEffect(() => {
+    if (snapshotLoaded.current) return;
+    const encoded = initialModelEncoded.current;
+    if (!encoded) return;
+    const fromUrl = readModelFromSearchParams(
+      new URLSearchParams({ model: encoded })
+    );
+    if (!fromUrl) return;
+    snapshotLoaded.current = true;
+    importModelSnapshot(project.id, fromUrl, project.name);
+  }, [project.id, project.name, importModelSnapshot]);
+
+  // סנכרון המודל ל-URL כדי שהקישור יכלול את הנתונים
+  useEffect(() => {
+    if (!canEmbedModelInUrl(model)) return;
+    const nextUrl = buildModelShareUrl(pathname, model);
+    if (window.location.href !== nextUrl) {
+      window.history.replaceState(null, "", nextUrl);
+    }
+  }, [model, pathname]);
 
   const closeModal = () => {
     setModal(null);
@@ -85,8 +127,30 @@ export function DataModelView(props: DataModelViewProps) {
     );
   };
 
+  const handleCopyShareLink = async () => {
+    if (!canEmbedModelInUrl(model)) {
+      setShareMessage("המודל גדול מדי לקישור — השתמש באותו דפדפן ודומיין");
+      return;
+    }
+    const url = buildModelShareUrl(pathname, model);
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareMessage("הקישור עם הנתונים הועתק!");
+    } catch {
+      setShareMessage(url);
+    }
+    setTimeout(() => setShareMessage(null), 4000);
+  };
+
   return (
     <>
+      <div className="px-4 py-2 bg-lambo-gold/5 border-b border-theme-border text-xs text-theme-muted flex flex-wrap items-center justify-between gap-2">
+        <span>
+          הנתונים נשמרים בדפדפן + בקישור. לאותו מחשב/דפדפן — פשוט חזור לקישור. לשיתוף — העתק קישור עם נתונים.
+        </span>
+        {shareMessage && <span className="text-lambo-gold">{shareMessage}</span>}
+      </div>
+
       <DataModelCanvas
         model={model}
         selectedTableId={selectedTableId}
@@ -112,6 +176,7 @@ export function DataModelView(props: DataModelViewProps) {
             tableId: selectedTableId ?? undefined,
           });
         }}
+        onCopyShareLink={handleCopyShareLink}
         onDeleteTable={(tableId) => {
           props.deleteDbTable(project.id, tableId);
           if (selectedTableId === tableId) setSelectedTableId(null);

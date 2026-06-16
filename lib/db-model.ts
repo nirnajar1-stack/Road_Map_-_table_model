@@ -84,6 +84,14 @@ export interface DbTable {
   order: number;
   rlsEnabled: boolean;
   status: DbTableStatus;
+  /** רוחב הכרטיס בפיקסלים */
+  cardWidth?: number;
+  /** שדות מכווצים — מציג רק כותרת */
+  fieldsCollapsed?: boolean;
+  /** גובה מקסימלי לאזור השדות (גלילה) */
+  bodyMaxHeight?: number;
+  /** נעוץ — תמיד מעל שאר הטבלאות */
+  pinned?: boolean;
 }
 
 export interface DbRelationship {
@@ -133,8 +141,14 @@ export interface DataModel {
 }
 
 export const TABLE_CARD_WIDTH = 300;
+export const TABLE_CARD_MIN_WIDTH = 200;
+export const TABLE_CARD_MAX_WIDTH = 560;
 export const TABLE_HEADER_HEIGHT = 52;
 export const FIELD_ROW_HEIGHT = 30;
+export const TABLE_COLLAPSED_BODY_HEIGHT = 36;
+export const TABLE_BODY_MIN_HEIGHT = 60;
+export const TABLE_BODY_MAX_HEIGHT = 480;
+export const TABLE_ACTIONS_HEIGHT = 34;
 
 export function emptyDataModel(): DataModel {
   return { tables: [], relationships: [], rlsPolicies: [], tableLinks: [], notes: [] };
@@ -147,6 +161,9 @@ export function normalizeDataModel(model?: DataModel): DataModel {
       rlsEnabled: t.rlsEnabled ?? false,
       status: t.status ?? "existing",
       fields: t.fields ?? [],
+      cardWidth: t.cardWidth ?? TABLE_CARD_WIDTH,
+      fieldsCollapsed: t.fieldsCollapsed ?? false,
+      pinned: t.pinned ?? false,
     })),
     relationships: model?.relationships ?? [],
     rlsPolicies: model?.rlsPolicies ?? [],
@@ -186,14 +203,33 @@ export function createDefaultFields(): Omit<DbField, "id" | "order">[] {
   ];
 }
 
-export function getTableHeight(table: DbTable): number {
-  return TABLE_HEADER_HEIGHT + table.fields.length * FIELD_ROW_HEIGHT + (table.rlsEnabled ? 28 : 0);
+export function getTableWidth(table: DbTable): number {
+  const w = table.cardWidth ?? TABLE_CARD_WIDTH;
+  return Math.min(TABLE_CARD_MAX_WIDTH, Math.max(TABLE_CARD_MIN_WIDTH, w));
+}
+
+export function getTableBodyHeight(table: DbTable): number {
+  if (table.fieldsCollapsed) return TABLE_COLLAPSED_BODY_HEIGHT;
+  const full = table.fields.length * FIELD_ROW_HEIGHT;
+  if (full === 0) return TABLE_COLLAPSED_BODY_HEIGHT;
+  const max = table.bodyMaxHeight ?? full;
+  return Math.min(full, Math.max(TABLE_BODY_MIN_HEIGHT, max));
+}
+
+export function getTableHeight(table: DbTable, includeActions = false): number {
+  let h =
+    TABLE_HEADER_HEIGHT +
+    getTableBodyHeight(table) +
+    (table.rlsEnabled && !table.fieldsCollapsed && table.fields.length > 0 ? 28 : 0);
+  if (includeActions) h += TABLE_ACTIONS_HEIGHT;
+  return h;
 }
 
 export function getTableCenter(table: DbTable): { x: number; y: number } {
   const h = getTableHeight(table);
+  const w = getTableWidth(table);
   return {
-    x: table.position.x + TABLE_CARD_WIDTH / 2,
+    x: table.position.x + w / 2,
     y: table.position.y + h / 2,
   };
 }
@@ -204,13 +240,14 @@ export function getTableEdgeAnchor(
   target: { x: number; y: number }
 ): { x: number; y: number } {
   const h = getTableHeight(table);
-  const cx = table.position.x + TABLE_CARD_WIDTH / 2;
+  const w = getTableWidth(table);
+  const cx = table.position.x + w / 2;
   const cy = table.position.y + h / 2;
   const dx = target.x - cx;
   const dy = target.y - cy;
-  if (Math.abs(dx) * h > Math.abs(dy) * TABLE_CARD_WIDTH) {
+  if (Math.abs(dx) * h > Math.abs(dy) * w) {
     return {
-      x: dx > 0 ? table.position.x + TABLE_CARD_WIDTH : table.position.x,
+      x: dx > 0 ? table.position.x + w : table.position.x,
       y: cy,
     };
   }
@@ -238,8 +275,9 @@ export function getFieldAnchor(
 ): { x: number; y: number } | null {
   const fieldIndex = table.fields.findIndex((f) => f.id === fieldId);
   if (fieldIndex < 0) return null;
+  const w = getTableWidth(table);
   return {
-    x: table.position.x + TABLE_CARD_WIDTH,
+    x: table.position.x + w,
     y: table.position.y + TABLE_HEADER_HEIGHT + fieldIndex * FIELD_ROW_HEIGHT + FIELD_ROW_HEIGHT / 2,
   };
 }
@@ -256,7 +294,8 @@ export function getFieldAnchorTarget(table: DbTable, fieldId: string): { x: numb
 export function canvasSize(tables: DbTable[], notes: DbNote[] = []): { width: number; height: number } {
   const points: { x: number; y: number }[] = [];
   tables.forEach((t) => {
-    points.push({ x: t.position.x + TABLE_CARD_WIDTH + 80, y: t.position.y });
+    const w = getTableWidth(t);
+    points.push({ x: t.position.x + w + 80, y: t.position.y });
     points.push({
       x: t.position.x,
       y: t.position.y + getTableHeight(t) + 80,
