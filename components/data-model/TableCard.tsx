@@ -53,14 +53,14 @@ const STATUS_STYLES: Record<
   { border: string; glow: string; badge: string }
 > = {
   new: {
-    border: "border-emerald-400/60",
-    glow: "0 0 24px rgba(52,211,153,0.25), 0 20px 40px rgba(0,0,0,0.55)",
-    badge: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
+    border: "border-emerald-500/70",
+    glow: "0 0 20px rgba(52,211,153,0.2), 0 12px 28px rgba(15,23,42,0.12)",
+    badge: "bg-emerald-50 text-emerald-700 border-emerald-300",
   },
   existing: {
-    border: "border-lambo-gold/50",
-    glow: "0 0 20px rgba(255,192,0,0.15), 0 20px 40px rgba(0,0,0,0.55)",
-    badge: "bg-lambo-gold/15 text-lambo-gold border-lambo-gold/30",
+    border: "border-lambo-gold/60",
+    glow: "0 0 16px rgba(255,192,0,0.15), 0 12px 28px rgba(15,23,42,0.12)",
+    badge: "bg-amber-50 text-amber-800 border-lambo-gold/40",
   },
 };
 
@@ -161,13 +161,13 @@ export function TableCard({
     >
       <div className="table-card-3d__face flex flex-col h-full">
         <div
-          className="px-3 py-2 border-b border-white/10 flex items-start justify-between gap-2 bg-gradient-to-b from-white/[0.06] to-transparent flex-shrink-0"
+          className="px-3 py-2 border-b border-slate-200 flex items-start justify-between gap-2 bg-gradient-to-b from-slate-50 to-white flex-shrink-0"
           style={{ minHeight: TABLE_HEADER_HEIGHT }}
         >
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               {table.pinned && <Pin size={10} className="text-lambo-gold flex-shrink-0" />}
-              <p className="font-mono text-sm font-semibold text-white truncate" dir="ltr">
+              <p className="font-mono text-sm font-semibold text-slate-900 truncate" dir="ltr">
                 {table.name}
               </p>
               <span
@@ -178,7 +178,7 @@ export function TableCard({
               </span>
             </div>
             {table.description && (
-              <p className="text-[10px] text-white/50 truncate mt-0.5">{table.description}</p>
+              <p className="text-[10px] text-slate-500 truncate mt-0.5">{table.description}</p>
             )}
           </div>
           <div className="flex items-center gap-0.5 flex-shrink-0">
@@ -198,7 +198,7 @@ export function TableCard({
               {table.pinned ? <PinOff size={12} /> : <Pin size={12} />}
             </HeaderBtn>
             {table.rlsEnabled && (
-              <span className="text-[9px] uppercase px-1.5 py-0.5 bg-lambo-gold/20 text-lambo-gold border border-lambo-gold/30">
+              <span className="text-[9px] uppercase px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-lambo-gold/40">
                 RLS
               </span>
             )}
@@ -208,7 +208,7 @@ export function TableCard({
         {table.fieldsCollapsed ? (
           <button
             type="button"
-            className="w-full px-3 py-2 text-[10px] text-white/50 hover:text-lambo-gold hover:bg-white/5 text-right transition-colors border-b border-white/5"
+            className="w-full px-3 py-2 text-[10px] text-slate-500 hover:text-lambo-gold hover:bg-slate-50 text-right transition-colors border-b border-slate-100"
             style={{ height: bodyHeight }}
             onClick={(e) => {
               e.stopPropagation();
@@ -230,14 +230,14 @@ export function TableCard({
               />
             ))}
             {table.fields.length === 0 && (
-              <p className="px-3 py-2 text-[10px] text-white/30">אין שדות</p>
+              <p className="px-3 py-2 text-[10px] text-slate-400">אין שדות</p>
             )}
           </div>
         )}
 
         {table.rlsEnabled && policies.length > 0 && !table.fieldsCollapsed && (
-          <div className="border-t border-white/10 px-3 py-1.5 bg-black/20 flex-shrink-0">
-            <p className="text-[9px] uppercase text-white/40 flex items-center gap-1">
+          <div className="border-t border-slate-200 px-3 py-1.5 bg-slate-50 flex-shrink-0">
+            <p className="text-[9px] uppercase text-slate-500 flex items-center gap-1">
               <Shield size={10} />
               {policies.length} מדיניות RLS
             </p>
@@ -245,13 +245,13 @@ export function TableCard({
         )}
 
         {selected && (
-          <div className="border-t border-white/10 px-2 py-1.5 flex gap-1 flex-wrap bg-black/30 flex-shrink-0">
+          <div className="border-t border-slate-200 px-2 py-1.5 flex gap-1 flex-wrap bg-slate-50 flex-shrink-0">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 nudgeWidth(-24);
               }}
-              className="text-[10px] px-2 py-1 bg-white/10 hover:bg-lambo-gold/20 text-white/80"
+              className="text-[10px] px-2 py-1 bg-white border border-slate-200 hover:bg-lambo-gold/10 text-slate-700"
               title="צמצם רוחב"
             >
               <ChevronsLeftRight size={10} className="rotate-90" />
@@ -261,7 +261,7 @@ export function TableCard({
                 e.stopPropagation();
                 nudgeWidth(24);
               }}
-              className="text-[10px] px-2 py-1 bg-white/10 hover:bg-lambo-gold/20 text-white/80"
+              className="text-[10px] px-2 py-1 bg-white border border-slate-200 hover:bg-lambo-gold/10 text-slate-700"
               title="הרחב רוחב"
             >
               <ChevronsLeftRight size={10} />
@@ -271,7 +271,7 @@ export function TableCard({
                 e.stopPropagation();
                 onAddField();
               }}
-              className="text-[10px] px-2 py-1 bg-white/10 hover:bg-lambo-gold/20 text-white/80"
+              className="text-[10px] px-2 py-1 bg-white border border-slate-200 hover:bg-lambo-gold/10 text-slate-700"
             >
               + שדה
             </button>
@@ -280,7 +280,7 @@ export function TableCard({
                 e.stopPropagation();
                 onAddRls();
               }}
-              className="text-[10px] px-2 py-1 bg-white/10 hover:bg-lambo-gold/20 text-white/80"
+              className="text-[10px] px-2 py-1 bg-white border border-slate-200 hover:bg-lambo-gold/10 text-slate-700"
             >
               + RLS
             </button>
@@ -290,7 +290,7 @@ export function TableCard({
                   e.stopPropagation();
                   onToggleStatus();
                 }}
-                className="text-[10px] px-2 py-1 bg-white/10 hover:bg-emerald-500/20 text-white/80"
+                className="text-[10px] px-2 py-1 bg-white border border-slate-200 hover:bg-emerald-50 text-slate-700"
               >
                 {table.status === "new" ? "סמן קיימת" : "סמן חדשה"}
               </button>
@@ -353,7 +353,7 @@ function HeaderBtn({
         onClick();
       }}
       className={`p-1 rounded-sm transition-colors ${
-        active ? "text-lambo-gold bg-lambo-gold/15" : "text-white/50 hover:text-white hover:bg-white/10"
+        active ? "text-lambo-gold bg-lambo-gold/15" : "text-slate-400 hover:text-slate-800 hover:bg-slate-100"
       }`}
     >
       {children}
@@ -365,7 +365,7 @@ function FieldRow({ field, isFk }: { field: DbField; isFk: boolean }) {
   return (
     <div
       data-field-id={field.id}
-      className="flex items-center gap-2 px-3 border-b border-white/5 font-mono text-[11px]"
+      className="flex items-center gap-2 px-3 border-b border-slate-100 font-mono text-[11px]"
       style={{ height: FIELD_ROW_HEIGHT }}
       dir="ltr"
     >
@@ -373,9 +373,9 @@ function FieldRow({ field, isFk }: { field: DbField; isFk: boolean }) {
         {field.primaryKey && <Key size={10} className="text-lambo-gold" />}
         {isFk && <Link2 size={10} className="text-lambo-cyan" />}
       </span>
-      <span className="flex-1 truncate text-white/85">{field.name}</span>
-      <span className="text-white/40 flex-shrink-0">{SQL_FIELD_TYPE_LABELS[field.type]}</span>
-      {!field.nullable && <span className="text-[9px] text-white/25">NN</span>}
+      <span className="flex-1 truncate text-slate-800">{field.name}</span>
+      <span className="text-slate-400 flex-shrink-0">{SQL_FIELD_TYPE_LABELS[field.type]}</span>
+      {!field.nullable && <span className="text-[9px] text-slate-300">NN</span>}
     </div>
   );
 }

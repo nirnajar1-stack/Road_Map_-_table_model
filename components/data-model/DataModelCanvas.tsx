@@ -137,7 +137,11 @@ export function DataModelCanvas({
       return note;
     });
   }, [model.notes, dragging, livePosition]);
-  const size = canvasSize(tables, notes);
+
+  const draggingRef = useRef(dragging);
+  const livePositionRef = useRef(livePosition);
+  draggingRef.current = dragging;
+  livePositionRef.current = livePosition;
 
   const getCanvasPoint = (clientX: number, clientY: number) => {
     const scrollEl = scrollRef.current;
@@ -151,17 +155,93 @@ export function DataModelCanvas({
   };
 
   const finishDrag = () => {
-    if (dragging && livePosition) {
-      if (dragging.kind === "table") {
-        onMoveTable(dragging.tableId, livePosition.x, livePosition.y);
+    const activeDrag = draggingRef.current;
+    const activePos = livePositionRef.current;
+    if (activeDrag && activePos) {
+      if (activeDrag.kind === "table") {
+        onMoveTable(activeDrag.tableId, activePos.x, activePos.y);
       } else {
-        onMoveNote(dragging.noteId, livePosition.x, livePosition.y);
+        onMoveNote(activeDrag.noteId, activePos.x, activePos.y);
       }
     }
     pointerRef.current = null;
     setDragging(null);
     setLivePosition(null);
   };
+
+  useEffect(() => {
+    const onWindowPointerMove = (e: PointerEvent) => {
+      const p = pointerRef.current;
+      if (!p) return;
+      const pt = getCanvasPoint(e.clientX, e.clientY);
+      const dx = pt.x - p.startX;
+      const dy = pt.y - p.startY;
+      const isDrag = Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD;
+
+      if (!draggingRef.current && isDrag) {
+        const next: DragTarget =
+          p.kind === "table"
+            ? {
+                kind: "table",
+                tableId: p.id,
+                offsetX: p.offsetX,
+                offsetY: p.offsetY,
+              }
+            : {
+                kind: "note",
+                noteId: p.id,
+                offsetX: p.offsetX,
+                offsetY: p.offsetY,
+              };
+        draggingRef.current = next;
+        setDragging(next);
+      }
+
+      if (draggingRef.current || isDrag) {
+        const pos = {
+          x: Math.max(0, pt.x - p.offsetX),
+          y: Math.max(0, pt.y - p.offsetY),
+        };
+        livePositionRef.current = pos;
+        setLivePosition(pos);
+      }
+    };
+
+    const onWindowPointerEnd = () => {
+      if (pointerRef.current) finishDrag();
+    };
+
+    window.addEventListener("pointermove", onWindowPointerMove);
+    window.addEventListener("pointerup", onWindowPointerEnd);
+    window.addEventListener("pointercancel", onWindowPointerEnd);
+    return () => {
+      window.removeEventListener("pointermove", onWindowPointerMove);
+      window.removeEventListener("pointerup", onWindowPointerEnd);
+      window.removeEventListener("pointercancel", onWindowPointerEnd);
+    };
+  }, [onMoveTable, onMoveNote]);
+
+  const [viewportSize, setViewportSize] = useState({ width: 1400, height: 800 });
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => {
+      setViewportSize({ width: el.clientWidth, height: el.clientHeight });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [detailsPanelOpen]);
+
+  const canvasDimensions = useMemo(() => {
+    const base = canvasSize(tables, notes);
+    return {
+      width: Math.max(base.width, viewportSize.width),
+      height: Math.max(base.height, viewportSize.height),
+    };
+  }, [tables, notes, viewportSize]);
 
   const handleCanvasBackgroundClick = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
@@ -261,40 +341,6 @@ export function DataModelCanvas({
     };
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    const pending = pointerRef.current;
-    if (!pending) return;
-    const pt = getCanvasPoint(e.clientX, e.clientY);
-    const dx = pt.x - pending.startX;
-    const dy = pt.y - pending.startY;
-    const isDrag = Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD;
-
-    if (!dragging && isDrag) {
-      setDragging(
-        pending.kind === "table"
-          ? {
-              kind: "table",
-              tableId: pending.id,
-              offsetX: pending.offsetX,
-              offsetY: pending.offsetY,
-            }
-          : {
-              kind: "note",
-              noteId: pending.id,
-              offsetX: pending.offsetX,
-              offsetY: pending.offsetY,
-            }
-      );
-    }
-
-    if (dragging || isDrag) {
-      setLivePosition({
-        x: Math.max(0, pt.x - pending.offsetX),
-        y: Math.max(0, pt.y - pending.offsetY),
-      });
-    }
-  };
-
   const exitConnectMode = () => {
     setConnectMode(false);
     setConnectFromId(null);
@@ -376,7 +422,6 @@ export function DataModelCanvas({
         <div
           ref={scrollRef}
           className="relative overflow-auto flex-1 min-h-[560px] schema-canvas"
-          onPointerMove={handlePointerMove}
           onPointerUp={finishDrag}
           onPointerCancel={finishDrag}
           onClick={handleCanvasBackgroundClick}
@@ -384,12 +429,12 @@ export function DataModelCanvas({
           <div
             ref={innerRef}
             className="relative schema-canvas-inner"
-            style={{ width: size.width, height: size.height }}
+            style={{ width: canvasDimensions.width, height: canvasDimensions.height }}
           >
             <svg
               className="absolute inset-0 pointer-events-none z-0"
-              width={size.width}
-              height={size.height}
+              width={canvasDimensions.width}
+              height={canvasDimensions.height}
             >
               <defs>
                 <marker

@@ -270,8 +270,9 @@ body {
     transform: perspective(900px) rotateX(4deg);
     transform-origin: center bottom;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    background: linear-gradient(160deg, #2a2a32 0%, #1a1a22 40%, #121218 100%);
+    background: linear-gradient(160deg, #ffffff 0%, #f8fafc 45%, #f1f5f9 100%);
     border-radius: 2px;
+    color: #1e293b;
   }
 
   .table-card-3d:hover {
@@ -302,10 +303,10 @@ body {
     pointer-events: none;
     background: linear-gradient(
       135deg,
-      rgba(255, 255, 255, 0.04) 0%,
+      rgba(255, 255, 255, 0.65) 0%,
       transparent 40%,
       transparent 60%,
-      rgba(0, 0, 0, 0.15) 100%
+      rgba(15, 23, 42, 0.04) 100%
     );
   }
 
