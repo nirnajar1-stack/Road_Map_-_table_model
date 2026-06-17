@@ -147,16 +147,26 @@ body {
     background: color-mix(in srgb, var(--text) 20%, transparent);
   }
 
-  /* ── Schema / Data Model canvas — lighter navy grid ── */
+  /* ── Schema / Data Model canvas — gradient blueprint grid ── */
   .schema-canvas {
-    background-color: #2d5a8a;
+    background-color: #1a3d62;
     background-image:
-      linear-gradient(rgba(200, 220, 255, 0.28) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(200, 220, 255, 0.28) 1px, transparent 1px),
-      linear-gradient(rgba(180, 210, 245, 0.12) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(180, 210, 245, 0.12) 1px, transparent 1px);
-    background-size: 40px 40px, 40px 40px, 8px 8px, 8px 8px;
-    background-position: -1px -1px;
+      radial-gradient(ellipse 90% 70% at 50% 30%, rgba(120, 185, 255, 0.22) 0%, transparent 65%),
+      radial-gradient(ellipse 60% 50% at 85% 85%, rgba(255, 192, 0, 0.06) 0%, transparent 55%),
+      linear-gradient(160deg, #152f4a 0%, #1e4d7a 28%, #2a6a9e 52%, #1f5285 78%, #173a5e 100%),
+      linear-gradient(rgba(255, 255, 255, 0.14) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.14) 1px, transparent 1px),
+      linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size:
+      100% 100%,
+      100% 100%,
+      100% 100%,
+      48px 48px,
+      48px 48px,
+      12px 12px,
+      12px 12px;
+    background-position: center, center, center, -1px -1px, -1px -1px, -1px -1px, -1px -1px;
   }
 
   .schema-canvas-inner {
@@ -165,11 +175,13 @@ body {
   }
 
   .schema-canvas-empty {
-    background-color: #2d5a8a;
+    background-color: #1a3d62;
     background-image:
-      linear-gradient(rgba(200, 220, 255, 0.22) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(200, 220, 255, 0.22) 1px, transparent 1px);
-    background-size: 40px 40px;
+      radial-gradient(ellipse 80% 60% at 50% 40%, rgba(120, 185, 255, 0.2) 0%, transparent 70%),
+      linear-gradient(160deg, #152f4a 0%, #1e4d7a 40%, #2a6a9e 100%),
+      linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
   }
 
   .schema-details-panel {
@@ -208,45 +220,56 @@ body {
   }
 
   @keyframes schema-link-flow {
-    to { stroke-dashoffset: -52; }
+    to { stroke-dashoffset: -56; }
   }
 
   @keyframes schema-fk-flow {
-    to { stroke-dashoffset: -44; }
+    to { stroke-dashoffset: -48; }
+  }
+
+  @keyframes schema-link-pulse {
+    0%, 100% { stroke-opacity: 0.85; }
+    50% { stroke-opacity: 1; }
   }
 
   .schema-link-glow {
-    stroke: rgba(255, 192, 0, 0.35);
-    stroke-width: 5;
+    stroke: rgba(255, 214, 64, 0.55);
+    stroke-width: 10;
     fill: none;
+    filter: url(#schema-link-glow-filter);
   }
 
   .schema-link-base {
-    stroke: rgba(255, 192, 0, 0.55);
-    stroke-width: 2.5;
+    stroke: rgba(255, 192, 0, 0.85);
+    stroke-width: 3.5;
     fill: none;
   }
 
   .schema-link-flow {
-    stroke: rgba(255, 192, 0, 1);
-    stroke-width: 2;
+    stroke: #fff8dc;
+    stroke-width: 3.5;
     fill: none;
-    stroke-dasharray: 10 16;
-    animation: schema-link-flow 0.8s linear infinite;
+    stroke-dasharray: 12 16;
+    stroke-linecap: round;
+    animation:
+      schema-link-flow 0.65s linear infinite,
+      schema-link-pulse 1.4s ease-in-out infinite;
   }
 
   .schema-fk-glow {
-    stroke: rgba(41, 171, 226, 0.2);
-    stroke-width: 4;
+    stroke: rgba(56, 189, 248, 0.45);
+    stroke-width: 8;
     fill: none;
+    filter: url(#schema-fk-glow-filter);
   }
 
   .schema-fk-flow {
-    stroke: rgba(41, 171, 226, 0.85);
-    stroke-width: 2;
+    stroke: #b8ecff;
+    stroke-width: 3;
     fill: none;
-    stroke-dasharray: 8 14;
-    animation: schema-fk-flow 1s linear infinite;
+    stroke-dasharray: 10 14;
+    stroke-linecap: round;
+    animation: schema-fk-flow 0.85s linear infinite;
   }
 
   .table-card-3d__face {

@@ -437,33 +437,47 @@ export function DataModelCanvas({
               height={canvasDimensions.height}
             >
               <defs>
+                <filter id="schema-link-glow-filter" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+                <filter id="schema-fk-glow-filter" x="-30%" y="-30%" width="160%" height="160%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
                 <marker
                   id="arrow-fk"
-                  markerWidth="8"
-                  markerHeight="8"
-                  refX="6"
-                  refY="3"
+                  markerWidth="10"
+                  markerHeight="10"
+                  refX="8"
+                  refY="4"
                   orient="auto"
                 >
-                  <path d="M0,0 L6,3 L0,6 Z" fill="rgba(41,171,226,0.7)" />
+                  <path d="M0,0 L8,4 L0,8 Z" fill="#7dd3fc" />
                 </marker>
                 <marker
                   id="arrow-link"
-                  markerWidth="8"
-                  markerHeight="8"
-                  refX="6"
-                  refY="3"
+                  markerWidth="12"
+                  markerHeight="12"
+                  refX="9"
+                  refY="5"
                   orient="auto"
                 >
-                  <path d="M0,0 L6,3 L0,6 Z" fill="rgba(255,192,0,0.8)" />
+                  <path d="M0,0 L10,5 L0,10 Z" fill="#ffd54f" stroke="#fff8dc" strokeWidth="0.5" />
                 </marker>
               </defs>
 
               {linkPaths.map((p) => (
                 <g key={p.id}>
                   <path d={p.d} className="schema-link-glow" />
-                  <path d={p.d} className="schema-link-base" markerEnd="url(#arrow-link)" />
-                  <path d={p.d} className="schema-link-flow" />
+                  <path d={p.d} className="schema-link-base" />
+                  <path d={p.d} className="schema-link-flow" markerEnd="url(#arrow-link)" />
                 </g>
               ))}
 
