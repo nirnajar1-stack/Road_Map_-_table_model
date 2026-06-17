@@ -21,14 +21,8 @@ import {
   type RlsPolicy,
   type TableLink,
 } from "@/lib/db-model";
-import type {
-  Milestone,
-  Project,
-  RoadmapFactor,
-  RoadmapTask,
-  Stage,
-} from "@/lib/types";
-import { normalizeProject, PROJECT_COLORS, getFactorColor } from "@/lib/types";
+import type { Project } from "@/lib/types";
+import { normalizeProject, PROJECT_COLORS } from "@/lib/types";
 
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -56,7 +50,6 @@ export function useProjects() {
     return { ...normalizeProject(project), updatedAt: new Date().toISOString() };
   }, []);
 
-  /** עדכון אמין לפי state עדכני — מונע דריסת נתונים */
   const mutateProject = useCallback(
     (projectId: string, mutator: (project: Project) => Project | null) => {
       setProjects((prev) => {
@@ -85,32 +78,26 @@ export function useProjects() {
     [touch]
   );
 
-  const createProject = useCallback(
-    (name: string, description?: string) => {
-      const now = new Date().toISOString();
-      let created!: Project;
-      setProjects((prev) => {
-        const project: Project = {
-          id: uuidv4(),
-          name,
-          description,
-          color: PROJECT_COLORS[prev.length % PROJECT_COLORS.length],
-          createdAt: now,
-          updatedAt: now,
-          stages: [],
-          factors: [],
-          tasks: [],
-          dataModel: emptyDataModel(),
-        };
-        created = project;
-        const next = [...prev, project];
-        saveProjects(next);
-        return next;
-      });
-      return created;
-    },
-    []
-  );
+  const createProject = useCallback((name: string, description?: string) => {
+    const now = new Date().toISOString();
+    let created!: Project;
+    setProjects((prev) => {
+      const project: Project = {
+        id: uuidv4(),
+        name,
+        description,
+        color: PROJECT_COLORS[prev.length % PROJECT_COLORS.length],
+        createdAt: now,
+        updatedAt: now,
+        dataModel: emptyDataModel(),
+      };
+      created = project;
+      const next = [...prev, project];
+      saveProjects(next);
+      return next;
+    });
+    return created;
+  }, []);
 
   const importModelSnapshot = useCallback(
     (projectId: string, model: DataModel, name = "מודל מיובא") => {
@@ -120,17 +107,14 @@ export function useProjects() {
         const base =
           idx >= 0
             ? normalizeProject(prev[idx])
-            : ({
+            : normalizeProject({
                 id: projectId,
                 name,
                 color: PROJECT_COLORS[prev.length % PROJECT_COLORS.length],
                 createdAt: now,
                 updatedAt: now,
-                stages: [],
-                factors: [],
-                tasks: [],
                 dataModel: emptyDataModel(),
-              } satisfies Project);
+              });
         const updated = touch({
           ...base,
           dataModel: normalizeDataModel(model),
@@ -146,175 +130,10 @@ export function useProjects() {
     [touch]
   );
 
-  const replaceDataModel = useCallback(
-    (projectId: string, model: DataModel) => {
-      mutateProject(projectId, (project) => ({
-        ...project,
-        dataModel: normalizeDataModel(model),
-      }));
-    },
-    [mutateProject]
-  );
-
-  const deleteProject = useCallback(
-    (id: string) => {
-      removeProject(id);
-      setProjects(loadProjects());
-    },
-    []
-  );
-
-  const addStage = useCallback(
-    (projectId: string, stage: Omit<Stage, "id" | "order" | "milestones">) => {
-      const project = projects.find((p) => p.id === projectId);
-      if (!project) return;
-
-      const newStage: Stage = {
-        ...stage,
-        id: uuidv4(),
-        order: project.stages.length,
-        milestones: [],
-      };
-      updateProject({
-        ...project,
-        stages: [...project.stages, newStage],
-      });
-    },
-    [projects, updateProject]
-  );
-
-  const updateStage = useCallback(
-    (projectId: string, stage: Stage) => {
-      const project = projects.find((p) => p.id === projectId);
-      if (!project) return;
-      updateProject({
-        ...project,
-        stages: project.stages.map((s) => (s.id === stage.id ? stage : s)),
-      });
-    },
-    [projects, updateProject]
-  );
-
-  const deleteStage = useCallback(
-    (projectId: string, stageId: string) => {
-      const project = projects.find((p) => p.id === projectId);
-      if (!project) return;
-      updateProject({
-        ...project,
-        stages: project.stages
-          .filter((s) => s.id !== stageId)
-          .map((s, i) => ({ ...s, order: i })),
-      });
-    },
-    [projects, updateProject]
-  );
-
-  const addMilestone = useCallback(
-    (
-      projectId: string,
-      stageId: string,
-      milestone: Omit<Milestone, "id" | "order">
-    ) => {
-      const project = projects.find((p) => p.id === projectId);
-      if (!project) return;
-      const stage = project.stages.find((s) => s.id === stageId);
-      if (!stage) return;
-
-      const newMilestone: Milestone = {
-        ...milestone,
-        id: uuidv4(),
-        order: stage.milestones.length,
-      };
-      updateStage(projectId, {
-        ...stage,
-        milestones: [...stage.milestones, newMilestone],
-      });
-    },
-    [projects, updateStage]
-  );
-
-  const deleteMilestone = useCallback(
-    (projectId: string, stageId: string, milestoneId: string) => {
-      const project = projects.find((p) => p.id === projectId);
-      if (!project) return;
-      const stage = project.stages.find((s) => s.id === stageId);
-      if (!stage) return;
-
-      updateStage(projectId, {
-        ...stage,
-        milestones: stage.milestones
-          .filter((m) => m.id !== milestoneId)
-          .map((m, i) => ({ ...m, order: i })),
-      });
-    },
-    [projects, updateStage]
-  );
-
-  const addFactor = useCallback(
-    (projectId: string, name: string) => {
-      const project = projects.find((p) => p.id === projectId);
-      if (!project) return;
-      const normalized = normalizeProject(project);
-      if (normalized.factors.some((f) => f.name === name)) return;
-
-      const factor: RoadmapFactor = {
-        id: uuidv4(),
-        name,
-        order: normalized.factors.length,
-        color: getFactorColor(normalized.factors.length),
-      };
-      updateProject({
-        ...normalized,
-        factors: [...normalized.factors, factor],
-      });
-    },
-    [projects, updateProject]
-  );
-
-  const deleteFactor = useCallback(
-    (projectId: string, factorId: string) => {
-      const project = projects.find((p) => p.id === projectId);
-      if (!project) return;
-      updateProject({
-        ...project,
-        factors: project.factors
-          .filter((f) => f.id !== factorId)
-          .map((f, i) => ({ ...f, order: i })),
-        tasks: project.tasks.filter((t) => t.factorId !== factorId),
-      });
-    },
-    [projects, updateProject]
-  );
-
-  const addTask = useCallback(
-    (projectId: string, task: Omit<RoadmapTask, "id">) => {
-      const project = projects.find((p) => p.id === projectId);
-      if (!project) return;
-      const normalized = normalizeProject(project);
-
-      const newTask: RoadmapTask = {
-        ...task,
-        id: uuidv4(),
-      };
-      updateProject({
-        ...normalized,
-        tasks: [...normalized.tasks, newTask],
-      });
-    },
-    [projects, updateProject]
-  );
-
-  const deleteTask = useCallback(
-    (projectId: string, taskId: string) => {
-      const project = projects.find((p) => p.id === projectId);
-      if (!project) return;
-      updateProject({
-        ...project,
-        tasks: project.tasks.filter((t) => t.id !== taskId),
-      });
-    },
-    [projects, updateProject]
-  );
+  const deleteProject = useCallback((id: string) => {
+    removeProject(id);
+    setProjects(loadProjects());
+  }, []);
 
   const addDbTable = useCallback(
     (
@@ -382,10 +201,7 @@ export function useProjects() {
         ...project,
         dataModel: {
           ...project.dataModel,
-          relationships: [
-            ...project.dataModel.relationships,
-            { ...rel, id: uuidv4() },
-          ],
+          relationships: [...project.dataModel.relationships, { ...rel, id: uuidv4() }],
         },
       }));
     },
@@ -398,10 +214,7 @@ export function useProjects() {
         ...project,
         dataModel: {
           ...project.dataModel,
-          rlsPolicies: [
-            ...project.dataModel.rlsPolicies,
-            { ...policy, id: uuidv4() },
-          ],
+          rlsPolicies: [...project.dataModel.rlsPolicies, { ...policy, id: uuidv4() }],
         },
       }));
     },
@@ -596,15 +409,7 @@ export function useProjects() {
     createProject,
     updateProject,
     deleteProject,
-    addStage,
-    updateStage,
-    deleteStage,
-    addMilestone,
-    deleteMilestone,
-    addFactor,
-    deleteFactor,
-    addTask,
-    deleteTask,
+    importModelSnapshot,
     addDbTable,
     addDbField,
     addDbRelationship,
@@ -614,8 +419,6 @@ export function useProjects() {
     moveDbTable,
     updateDbTableStatus,
     updateDbTable,
-    replaceDataModel,
-    importModelSnapshot,
     addTableLink,
     deleteTableLink,
     addDbNote,

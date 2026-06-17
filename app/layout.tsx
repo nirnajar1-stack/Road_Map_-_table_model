@@ -10,8 +10,8 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "ROAD MAP — מפת דרכים מודולרית",
-  description: "מערכת לבניית רודמאפ מודולרי לפרויקטים עם תזמון שלבים",
+  title: "מודל נתונים — תרשים ER",
+  description: "מערכת לבניית מודל נתונים אינטראקטיבי עם טבלאות, קשרים ו-RLS",
 };
 
 export default function RootLayout({

@@ -143,14 +143,15 @@ export function DataModelView(props: DataModelViewProps) {
   };
 
   return (
-    <>
-      <div className="px-4 py-2 bg-lambo-gold/5 border-b border-theme-border text-xs text-theme-muted flex flex-wrap items-center justify-between gap-2">
+    <div className="flex flex-col flex-1 min-h-0 h-full">
+      <div className="px-4 py-2 bg-lambo-gold/5 border-b border-theme-border text-xs text-theme-muted flex flex-wrap items-center justify-between gap-2 flex-shrink-0">
         <span>
           הנתונים נשמרים בדפדפן + בקישור. לאותו מחשב/דפדפן — פשוט חזור לקישור. לשיתוף — העתק קישור עם נתונים.
         </span>
         {shareMessage && <span className="text-lambo-gold">{shareMessage}</span>}
       </div>
 
+      <div className="flex-1 min-h-0 flex flex-col">
       <DataModelCanvas
         model={model}
         selectedTableId={selectedTableId}
@@ -198,6 +199,7 @@ export function DataModelView(props: DataModelViewProps) {
           props.updateDbTable(project.id, tableId, updates)
         }
       />
+      </div>
 
       {modal === "table" && (
         <Modal title="טבלה חדשה" onClose={closeModal}>
@@ -249,6 +251,6 @@ export function DataModelView(props: DataModelViewProps) {
           />
         </Modal>
       )}
-    </>
+    </div>
   );
 }

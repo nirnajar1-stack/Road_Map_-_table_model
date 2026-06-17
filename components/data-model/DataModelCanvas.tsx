@@ -366,7 +366,7 @@ export function DataModelCanvas({
   const selectedNote = notes.find((n) => n.id === selectedNoteId);
 
   return (
-    <div className="flex flex-col lg:flex-row w-full min-h-[640px]">
+    <div className="flex flex-col lg:flex-row w-full h-full min-h-[calc(100vh-220px)]">
       <div className="flex-1 flex flex-col border-b lg:border-b-0 lg:border-l border-theme-border">
         <div className="flex items-center justify-between px-4 py-3 border-b border-theme-border gap-2 flex-wrap bg-theme-surface">
           <div className="flex items-center gap-3 flex-wrap">
@@ -461,32 +461,16 @@ export function DataModelCanvas({
 
               {linkPaths.map((p) => (
                 <g key={p.id}>
-                  <path
-                    d={p.d}
-                    fill="none"
-                    stroke="rgba(255,192,0,0.5)"
-                    strokeWidth={2.5}
-                    markerEnd="url(#arrow-link)"
-                  />
-                  <path
-                    d={p.d}
-                    fill="none"
-                    stroke="rgba(255,192,0,0.9)"
-                    strokeWidth={1}
-                    strokeDasharray="6 4"
-                  />
+                  <path d={p.d} className="schema-link-glow" />
+                  <path d={p.d} className="schema-link-base" markerEnd="url(#arrow-link)" />
+                  <path d={p.d} className="schema-link-flow" />
                 </g>
               ))}
 
               {fkPaths.map((p) => (
                 <g key={p.id}>
-                  <path
-                    d={p.d}
-                    fill="none"
-                    stroke="rgba(41,171,226,0.35)"
-                    strokeWidth={2}
-                    markerEnd="url(#arrow-fk)"
-                  />
+                  <path d={p.d} className="schema-fk-glow" />
+                  <path d={p.d} className="schema-fk-flow" markerEnd="url(#arrow-fk)" />
                 </g>
               ))}
             </svg>

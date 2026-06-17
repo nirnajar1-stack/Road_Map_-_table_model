@@ -147,91 +147,6 @@ body {
     background: color-mix(in srgb, var(--text) 20%, transparent);
   }
 
-  .road-scene {
-    @apply relative overflow-x-auto scrollbar-thin;
-    background: linear-gradient(
-      180deg,
-      var(--road-grass-dark) 0%,
-      var(--road-grass) 18%,
-      var(--road-grass) 82%,
-      var(--road-grass-dark) 100%
-    );
-  }
-
-  .road-lane {
-    @apply relative flex-shrink-0;
-    height: 72px;
-    background: var(--road-asphalt);
-    border-top: 3px solid var(--road-edge);
-    border-bottom: 3px solid var(--road-edge);
-  }
-
-  .road-lane::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 2px;
-    transform: translateY(-50%);
-    background: repeating-linear-gradient(
-      90deg,
-      var(--road-dash) 0,
-      var(--road-dash) 16px,
-      transparent 16px,
-      transparent 32px
-    );
-    opacity: 0.85;
-  }
-
-  .road-segment {
-    @apply road-lane flex-shrink-0;
-    min-width: 48px;
-  }
-
-  .road-segment-done {
-    filter: brightness(1.15);
-  }
-
-  .road-segment-locked {
-    filter: brightness(0.65) saturate(0.4);
-  }
-
-  .timeline-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
-
-  .timeline-node {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 2px solid var(--border);
-    background: var(--surface);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-  }
-
-  .timeline-node-open {
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--node-color, var(--lambo-gold)) 18%, transparent);
-  }
-
-  .timeline-node-active {
-    box-shadow: 0 0 0 5px color-mix(in srgb, var(--node-color, var(--lambo-gold)) 28%, transparent);
-  }
-
-  .timeline-node-done {
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--node-color, var(--lambo-gold)) 22%, transparent);
-  }
-
-  .roadmap-grid-scroll {
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
-
   /* ── Schema / Data Model canvas — lighter navy grid ── */
   .schema-canvas {
     background-color: #2d5a8a;
@@ -290,6 +205,48 @@ body {
   @keyframes connect-pulse {
     0%, 100% { outline: 2px solid rgba(255, 192, 0, 0.4); }
     50% { outline: 2px solid rgba(255, 192, 0, 0.9); }
+  }
+
+  @keyframes schema-link-flow {
+    to { stroke-dashoffset: -52; }
+  }
+
+  @keyframes schema-fk-flow {
+    to { stroke-dashoffset: -44; }
+  }
+
+  .schema-link-glow {
+    stroke: rgba(255, 192, 0, 0.35);
+    stroke-width: 5;
+    fill: none;
+  }
+
+  .schema-link-base {
+    stroke: rgba(255, 192, 0, 0.55);
+    stroke-width: 2.5;
+    fill: none;
+  }
+
+  .schema-link-flow {
+    stroke: rgba(255, 192, 0, 1);
+    stroke-width: 2;
+    fill: none;
+    stroke-dasharray: 10 16;
+    animation: schema-link-flow 0.8s linear infinite;
+  }
+
+  .schema-fk-glow {
+    stroke: rgba(41, 171, 226, 0.2);
+    stroke-width: 4;
+    fill: none;
+  }
+
+  .schema-fk-flow {
+    stroke: rgba(41, 171, 226, 0.85);
+    stroke-width: 2;
+    fill: none;
+    stroke-dasharray: 8 14;
+    animation: schema-fk-flow 1s linear infinite;
   }
 
   .table-card-3d__face {
