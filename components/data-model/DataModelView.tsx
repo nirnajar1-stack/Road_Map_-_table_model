@@ -12,6 +12,7 @@ import {
   readModelFromSearchParams,
 } from "@/lib/model-snapshot";
 import { hasDataModelContent } from "@/lib/db-model";
+import { embedProjectPath, isEmbeddedFrame } from "@/lib/embed";
 import { DataModelCanvas } from "./DataModelCanvas";
 import { Modal } from "@/components/ProjectForm";
 import {
@@ -72,12 +73,14 @@ interface DataModelViewProps {
   updateDbNote: (projectId: string, noteId: string, text: string) => void;
   deleteDbNote: (projectId: string, noteId: string) => void;
   moveDbNote: (projectId: string, noteId: string, x: number, y: number) => void;
+  /** מצב הטמעה (Notion / iframe) — הנתונים נטענים מה-URL */
+  embedded?: boolean;
 }
 
 type ModalType = "table" | "field" | "relationship" | "rls" | null;
 
 export function DataModelView(props: DataModelViewProps) {
-  const { project, importModelSnapshot } = props;
+  const { project, importModelSnapshot, embedded = false } = props;
   const model = normalizeProject(project).dataModel;
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -91,29 +94,51 @@ export function DataModelView(props: DataModelViewProps) {
   const [rlsTableId, setRlsTableId] = useState<string | undefined>();
   const [shareMessage, setShareMessage] = useState<string | null>(null);
 
-  // ייבוא מקישור שיתוף — רק למודל ריק (לא לדרוס נתונים שכבר נשמרו בדפדפן)
+  // טעינה מ-URL: ב-iframe/הטמעה תמיד; בדפדפן רגיל רק למודל ריק
   useEffect(() => {
     if (snapshotLoaded.current) return;
     snapshotLoaded.current = true;
 
-    if (hasDataModelContent(model)) {
-      // מקור האמת הוא localStorage — מסיר snapshot ישן מה-URL כדי שלא יבלבל ברענון
-      const url = new URL(window.location.href);
-      if (url.searchParams.has(MODEL_SNAPSHOT_PARAM)) {
-        url.searchParams.delete(MODEL_SNAPSHOT_PARAM);
-        window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    const inEmbed = embedded || isEmbeddedFrame();
+    const encoded = searchParams.get(MODEL_SNAPSHOT_PARAM) ?? initialModelEncoded.current;
+    const fromUrl = encoded
+      ? readModelFromSearchParams(new URLSearchParams({ model: encoded }))
+      : null;
+
+    if (inEmbed) {
+      if (fromUrl) {
+        importModelSnapshot(project.id, fromUrl, project.name);
       }
       return;
     }
 
-    const encoded = initialModelEncoded.current;
-    if (!encoded) return;
-    const fromUrl = readModelFromSearchParams(
-      new URLSearchParams({ model: encoded })
-    );
-    if (!fromUrl) return;
-    importModelSnapshot(project.id, fromUrl, project.name);
-  }, [project.id, project.name, importModelSnapshot, model]);
+    if (hasDataModelContent(model)) return;
+    if (fromUrl) {
+      importModelSnapshot(project.id, fromUrl, project.name);
+    }
+  }, [project.id, project.name, importModelSnapshot, model, embedded, searchParams]);
+
+  // עדכון ?model= ב-URL לשיתוף והטמעה (לא דורס localStorage ברענון רגיל)
+  useEffect(() => {
+    const inEmbed = embedded || isEmbeddedFrame();
+    const sharePath = inEmbed ? embedProjectPath(project.id) : pathname;
+
+    if (!canEmbedModelInUrl(model)) {
+      if (!inEmbed) {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has(MODEL_SNAPSHOT_PARAM)) {
+          url.searchParams.delete(MODEL_SNAPSHOT_PARAM);
+          window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+        }
+      }
+      return;
+    }
+
+    const nextUrl = buildModelShareUrl(sharePath, model);
+    if (window.location.href !== nextUrl) {
+      window.history.replaceState(null, "", nextUrl);
+    }
+  }, [model, pathname, embedded, project.id]);
 
   const closeModal = () => {
     setModal(null);
@@ -136,22 +161,23 @@ export function DataModelView(props: DataModelViewProps) {
       setShareMessage("המודל גדול מדי לקישור — השתמש באותו דפדפן ודומיין");
       return;
     }
-    const url = buildModelShareUrl(pathname, model);
+    const url = buildModelShareUrl(embedProjectPath(project.id), model);
     try {
       await navigator.clipboard.writeText(url);
-      setShareMessage("הקישור עם הנתונים הועתק!");
+      setShareMessage("קישור להטמעה ב-Notion הועתק! הדבק את הקישור המלא.");
     } catch {
       setShareMessage(url);
     }
-    setTimeout(() => setShareMessage(null), 4000);
+    setTimeout(() => setShareMessage(null), 5000);
   };
 
   return (
     <div className="flex flex-col flex-1 min-h-0 h-full">
       <div className="px-4 py-2 bg-lambo-gold/5 border-b border-theme-border text-xs text-theme-muted flex flex-wrap items-center justify-between gap-2 flex-shrink-0">
         <span>
-          השינויים נשמרים אוטומטית בדפדפן (localStorage) — חשוב לפתוח תמיד מאותה כתובת (למשל אותו דומיין ב-Vercel).
-          לשיתוף עם אחרים לחץ על &quot;שתף קישור&quot;.
+          {embedded
+            ? "מצב הטמעה — הנתונים מגיעים מהקישור (?model=). לאחר עריכה לחץ שוב על \"שתף קישור\" ועדכן ב-Notion."
+            : "השינויים נשמרים בדפדפן. להטמעה ב-Notion לחץ \"שתף קישור\" והדבק את הקישור המלא ב-Notion."}
         </span>
         {shareMessage && <span className="text-lambo-gold">{shareMessage}</span>}
       </div>
