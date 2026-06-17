@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, useCallback } from "react";
 import {
   Database,
   Link2,
@@ -651,17 +651,49 @@ function TableDetails({
 }) {
   const [name, setName] = useState(table.name);
   const [description, setDescription] = useState(table.description ?? "");
+  const pendingSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setName(table.name);
     setDescription(table.description ?? "");
   }, [table.id, table.name, table.description]);
 
-  const commitText = () => {
+  const commitText = useCallback(() => {
+    const nextName = name.trim() || table.name;
+    const nextDescription = description.trim() || undefined;
+    if (nextName === table.name && nextDescription === (table.description ?? undefined)) {
+      return;
+    }
     onUpdate({
-      name: name.trim() || table.name,
-      description: description.trim() || undefined,
+      name: nextName,
+      description: nextDescription,
     });
+  }, [name, description, table.name, table.description, onUpdate]);
+
+  useEffect(() => {
+    if (name === table.name && description === (table.description ?? "")) return;
+    if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
+    pendingSaveRef.current = setTimeout(() => {
+      commitText();
+      pendingSaveRef.current = null;
+    }, 400);
+    return () => {
+      if (pendingSaveRef.current) clearTimeout(pendingSaveRef.current);
+    };
+  }, [name, description, table.name, table.description, commitText]);
+
+  useEffect(() => {
+    const onPageHide = () => commitText();
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, [commitText]);
+
+  const flushAndCommit = () => {
+    if (pendingSaveRef.current) {
+      clearTimeout(pendingSaveRef.current);
+      pendingSaveRef.current = null;
+    }
+    commitText();
   };
 
   return (
@@ -674,8 +706,8 @@ function TableDetails({
           dir="ltr"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          onBlur={commitText}
-          onKeyDown={(e) => e.key === "Enter" && commitText()}
+          onBlur={flushAndCommit}
+          onKeyDown={(e) => e.key === "Enter" && flushAndCommit()}
         />
         <label className="label-caption block mb-1">תיאור</label>
         <textarea
@@ -683,7 +715,7 @@ function TableDetails({
           rows={2}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          onBlur={commitText}
+          onBlur={flushAndCommit}
           placeholder="תיאור הטבלה..."
         />
         <label className="label-caption block mb-1">סטטוס</label>

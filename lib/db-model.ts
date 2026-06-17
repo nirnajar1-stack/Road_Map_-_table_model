@@ -154,6 +154,16 @@ export function emptyDataModel(): DataModel {
   return { tables: [], relationships: [], rlsPolicies: [], tableLinks: [], notes: [] };
 }
 
+export function hasDataModelContent(model: DataModel): boolean {
+  return (
+    model.tables.length > 0 ||
+    model.relationships.length > 0 ||
+    model.tableLinks.length > 0 ||
+    model.notes.length > 0 ||
+    model.rlsPolicies.length > 0
+  );
+}
+
 export function normalizeDataModel(model?: DataModel): DataModel {
   return {
     tables: (model?.tables ?? []).map((t) => ({

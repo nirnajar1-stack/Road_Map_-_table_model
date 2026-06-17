@@ -8,8 +8,10 @@ import { normalizeProject } from "@/lib/types";
 import {
   buildModelShareUrl,
   canEmbedModelInUrl,
+  MODEL_SNAPSHOT_PARAM,
   readModelFromSearchParams,
 } from "@/lib/model-snapshot";
+import { hasDataModelContent } from "@/lib/db-model";
 import { DataModelCanvas } from "./DataModelCanvas";
 import { Modal } from "@/components/ProjectForm";
 import {
@@ -89,27 +91,29 @@ export function DataModelView(props: DataModelViewProps) {
   const [rlsTableId, setRlsTableId] = useState<string | undefined>();
   const [shareMessage, setShareMessage] = useState<string | null>(null);
 
-  // טעינת מודל מקישור (?model=...) בכניסה ראשונה בלבד
+  // ייבוא מקישור שיתוף — רק למודל ריק (לא לדרוס נתונים שכבר נשמרו בדפדפן)
   useEffect(() => {
     if (snapshotLoaded.current) return;
+    snapshotLoaded.current = true;
+
+    if (hasDataModelContent(model)) {
+      // מקור האמת הוא localStorage — מסיר snapshot ישן מה-URL כדי שלא יבלבל ברענון
+      const url = new URL(window.location.href);
+      if (url.searchParams.has(MODEL_SNAPSHOT_PARAM)) {
+        url.searchParams.delete(MODEL_SNAPSHOT_PARAM);
+        window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+      }
+      return;
+    }
+
     const encoded = initialModelEncoded.current;
     if (!encoded) return;
     const fromUrl = readModelFromSearchParams(
       new URLSearchParams({ model: encoded })
     );
     if (!fromUrl) return;
-    snapshotLoaded.current = true;
     importModelSnapshot(project.id, fromUrl, project.name);
-  }, [project.id, project.name, importModelSnapshot]);
-
-  // סנכרון המודל ל-URL כדי שהקישור יכלול את הנתונים
-  useEffect(() => {
-    if (!canEmbedModelInUrl(model)) return;
-    const nextUrl = buildModelShareUrl(pathname, model);
-    if (window.location.href !== nextUrl) {
-      window.history.replaceState(null, "", nextUrl);
-    }
-  }, [model, pathname]);
+  }, [project.id, project.name, importModelSnapshot, model]);
 
   const closeModal = () => {
     setModal(null);
@@ -146,7 +150,8 @@ export function DataModelView(props: DataModelViewProps) {
     <div className="flex flex-col flex-1 min-h-0 h-full">
       <div className="px-4 py-2 bg-lambo-gold/5 border-b border-theme-border text-xs text-theme-muted flex flex-wrap items-center justify-between gap-2 flex-shrink-0">
         <span>
-          הנתונים נשמרים בדפדפן + בקישור. לאותו מחשב/דפדפן — פשוט חזור לקישור. לשיתוף — העתק קישור עם נתונים.
+          השינויים נשמרים אוטומטית בדפדפן (localStorage) — חשוב לפתוח תמיד מאותה כתובת (למשל אותו דומיין ב-Vercel).
+          לשיתוף עם אחרים לחץ על &quot;שתף קישור&quot;.
         </span>
         {shareMessage && <span className="text-lambo-gold">{shareMessage}</span>}
       </div>

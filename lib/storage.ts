@@ -16,9 +16,15 @@ export function loadProjects(): Project[] {
   }
 }
 
-export function saveProjects(projects: Project[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+export function saveProjects(projects: Project[]): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+    return true;
+  } catch (error) {
+    console.error("Failed to save projects to localStorage", error);
+    return false;
+  }
 }
 
 export function getProject(id: string): Project | undefined {
